@@ -73,7 +73,7 @@ No MCP servers, MCP shopping, Stitch, 21st.dev, or other assistant servers, desi
 
 ## Rights
 
-The repository is **public** with GitHub Pages at [https://ruvebal.github.io/feii-album-covers/](https://ruvebal.github.io/feii-album-covers/) — classroom artwork is world-visible, so **licence and IP matter more, not less** (D8). Each route declares its picture's right in `docs/ktx2-note.md`: a photograph of a physical album the team owns, or a named licence. `_studio` uses original or PD/CC art only. The `_template` placeholder art is original material made for this repository.
+The repository is **public** with GitHub Pages at [https://ruvebal.github.io/feii-album-covers/](https://ruvebal.github.io/feii-album-covers/) — classroom artwork is world-visible, so **licence and IP matter more, not less** (D8). Each route records the creator, source, licence/permission, and attribution in `docs/ktx2-note.md`. Use student-created artwork, public-domain material, an open licence that permits the public adaptation, or written permission from the rights holder. Owning a physical album is not permission to republish its cover. `_studio` and the `_template` use original or PD/CC material only.
 
 ## Instructor notes
 

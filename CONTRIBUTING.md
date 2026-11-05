@@ -173,9 +173,10 @@ Review against the assignment bars and the PR template's checklist, not a genera
 
 ## Rights (D8)
 
-- Your sleeve picture is a photograph of a physical album **you own**, or an image whose **licence you name** in `docs/ktx2-note.md`.
-- A private repository is not a licence.
-- `_studio` ships original or public-domain / CC art only. The `_template` placeholder is original art made for this repository.
+- Use artwork you created, public-domain material, an open licence that permits the public adaptation, or written permission from the rights holder.
+- Record the creator, source, licence/permission, and required attribution in `docs/ktx2-note.md`.
+- Owning a physical album is not permission to republish its cover. Public Pages is not private study, and a repository is not a licence.
+- A claimed legal exception requires instructor review before publication. `_studio` and `_template` ship original or public-domain / CC art only.
 
 ## Editor rules
 
