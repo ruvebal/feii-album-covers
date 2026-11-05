@@ -1,0 +1,21 @@
+// Tracklist oficial de POR SI MAÑANA NO ESTOY (19-02-2026)
+export const tracks = [
+  { title: 'OUTRO' },
+  { title: 'EL MUNDO SE VA A ACABAR', feat: 'KARBeats' },
+  { title: 'FOREVER TU GANTEL', feat: 'Ñengo Flow' },
+  { title: 'L a k e n o s h i' },
+  { title: 'VAMOaCOCHI' },
+  { title: 'SUSU' },
+  { title: 'SIRENA' },
+  { title: 'GANTEL y BELLAKz', feat: 'Bassyy' },
+  { title: 'SI ESTÁS CON ALGUIEN' },
+  { title: 'Dulces SueñoZzz (+INTERLUDIO)', feat: 'Rubí' },
+  { title: '$UELTA GATITA $UELTA', feat: 'Dei V, Clarent' },
+  { title: 'WHAT U NEED? (SexPlaylist 2)', feat: 'Myke Towers' },
+  { title: 'WO OH OH', feat: 'ROA' },
+  { title: 'KOKO' },
+  { title: 'COMERNOS', feat: 'Bad Gyal' },
+  { title: 'SKY' },
+  { title: 'MOONLIGHT', feat: 'Eladio Carrión' },
+  { title: 'POR SI MAÑANA NO ESTOY' },
+];
