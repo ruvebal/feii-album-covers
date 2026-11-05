@@ -23,6 +23,38 @@ export default class CanvasErrorBoundary extends Component {
 
   render() {
     if (this.state.error) {
+      if (this.props.slug === '_fixture-throw') {
+        return (
+          <main className="canvas-error canvas-error--fixture" role="alert">
+            <p className="eyebrow">Instructor regression fixture</p>
+            <h1>This route fails on purpose</h1>
+            <p>
+              <code>/covers/_fixture-throw</code> deliberately throws while React renders. It proves
+              that one student route can fail without taking down the shared class exhibition.
+            </p>
+            <p>
+              The error boundary has replaced only this route. The project selector, previous/next
+              links, and <strong>All projects</strong> navigation remain outside the boundary and
+              should still work.
+            </p>
+            <h2>What this fixture checks</h2>
+            <ul>
+              <li>A missing import, image, invalid component, or shader failure stays local.</li>
+              <li>The failing route reports its slug and error in the browser console.</li>
+              <li>Visitors can leave the route without refreshing the page.</li>
+              <li>Other student endpoints continue to load normally.</li>
+            </ul>
+            <p className="meta">
+              Expected error: <code>{String(this.state.error.message ?? this.state.error)}</code>
+            </p>
+            <p className="meta">
+              This is infrastructure evidence, not a broken student submission. Keep the direct URL
+              for testing after changes to routing, lazy loading, navigation, or error handling.
+            </p>
+          </main>
+        );
+      }
+
       return (
         <div className="canvas-error" role="alert">
           <p>
