@@ -1,0 +1,156 @@
+.eao {
+  --eao-star: #ffe489;
+  --eao-ink: #3a1457;
+  box-sizing: border-box;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(14rem, 20rem);
+  gap: 1.5rem;
+  align-items: start; /* a panel taller than the screen must not push the stage below the fold */
+  justify-content: center;
+  /* Bottom room for the gallery's fixed project selector and route bar (src/index.css: bottom 12px
+     and 56px), which this route must not cover or move. */
+  --eao-nav: 7rem;
+  padding: 1rem 1rem calc(1rem + var(--eao-nav));
+  background: #1c0f26;
+  color: #f4ecf8;
+}
+
+/* Square stage: at rest the record fills it exactly, so the first frame is the cover. The poster
+   (the cover itself) shows until the 3D record has loaded, and stays if it fails. */
+.eao__cover {
+  position: relative;
+  /* As large as fits beside the panel (20rem + gap) and above the gallery navigation. */
+  width: min(92vw, calc(100vw - 24rem), calc(100dvh - 2rem - var(--eao-nav)));
+  aspect-ratio: 1;
+  background: #1c0f26 center / cover no-repeat;
+  touch-action: pan-y; /* vertical scrolling keeps working; a horizontal flick turns the record */
+}
+
+.eao__cover canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Visually hidden, still read and selectable by assistive tech: the lettering image shows it. */
+.eao__title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.eao__members {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.eao__members button {
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: #2e1a3d;
+  border: 1px solid #6b4a86;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.eao__members button {
+  border-left: 0.4rem solid var(--tint);
+}
+
+.eao__members button:hover,
+.eao__members button:focus-visible,
+.eao__members button[aria-pressed='true'] {
+  background: #4a2a63;
+  outline: 2px solid var(--eao-star);
+  outline-offset: 2px;
+}
+
+.eao__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-block: 0.75rem;
+}
+
+.eao__controls button,
+.eao__tracks button {
+  font: inherit;
+  color: inherit;
+  background: #2e1a3d;
+  border: 1px solid #6b4a86;
+  border-radius: 6px;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+}
+
+.eao__controls button:focus-visible,
+.eao__tracks button:focus-visible {
+  outline: 2px solid var(--eao-star);
+  outline-offset: 2px;
+}
+
+.eao__tracks h2 {
+  font-size: 1rem;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.eao__tracks ol {
+  margin: 0;
+  padding-left: 1.4rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.eao__tracks button {
+  padding: 0.1rem 0.4rem;
+  text-align: left;
+}
+
+.eao__tracks span {
+  opacity: 0.7;
+}
+
+.eao__failed {
+  position: absolute;
+  inset: auto 0 0;
+  margin: 0;
+  padding: 0.5rem;
+  background: rgb(28 15 38 / 85%);
+}
+
+.eao__info {
+  min-height: 3em;
+}
+
+.eao__credits,
+.eao__budget {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.eao__budget.over {
+  color: #ff8a8a;
+  opacity: 1;
+}
+
+@media (max-width: 52rem) {
+  .eao {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .eao__cover {
+    /* Stacked: the full width, but short enough in landscape that the controls stay reachable. */
+    width: min(100%, 92vw, calc(100dvh - 2rem - var(--eao-nav)));
+    margin-inline: auto;
+  }
+}
+
