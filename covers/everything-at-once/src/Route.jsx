@@ -88,6 +88,7 @@ function CoverRoute() {
   const reduced = usePrefersReducedMotion();
   const [search] = useSearchParams();
   const debug = search.has('debug');
+  const fps = search.get('debug') === 'fps'; // ?debug=fps: frame-rate overlay for the hardware/phone gates
   const [hovered, setHovered] = useState(null);
   // ?pin=<member> opens with that member selected; anything else starts at rest.
   const [pinned, setPinned] = useState(() => byId(search.get('pin'))?.id ?? null);
@@ -239,7 +240,7 @@ function CoverRoute() {
               <Ready onReady={onReady} />
             </Suspense>
             <Opening spreadRef={spread} runningRef={opening} />
-            <RouteBudgetProbe onSample={setBudget} />
+            <RouteBudgetProbe onSample={setBudget} fps={fps} debug={debug} />
           </Canvas>
         </SceneBoundary>
         <hgroup className="eao__title">
@@ -323,6 +324,13 @@ function CoverRoute() {
           <p className={verdict === false ? 'eao__budget over' : 'eao__budget'}>
             {budget
               ? `calls ${budget.calls} · triangles ${budget.triangles} · geometries ${budget.geometries} · textures ${budget.textures}`
+              : 'Sampling…'}
+          </p>
+        )}
+        {fps && (
+          <p className="eao__fps">
+            {budget?.fps
+              ? `${budget.fps.avg.toFixed(1)} fps · p95 ${budget.fps.p95.toFixed(1)} ms · ${budget.fps.seconds.toFixed(0)} s · calls ${budget.calls} · ${budget.fps.size} @${budget.fps.dpr} · ${budget.fps.gpu}`
               : 'Sampling…'}
           </p>
         )}
