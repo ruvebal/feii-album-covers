@@ -220,11 +220,14 @@ function CoverRoute() {
   // first) through release; elsewhere the page scrolls and pinch-zoom stays native.
   const onPointerDown = (e) => {
     stage.current?.focus({ preventScroll: true }); // so Escape after a canvas selection reaches the route
-    if (!e.target.dataset?.hit || TURN.id !== -1) return; // off the record, or a second finger
+    // off the record, a second finger, or not the primary button (a context menu can swallow its pointerup)
+    if (!e.target.dataset?.hit || TURN.id !== -1 || e.button !== 0) return;
     press(e, face);
     e.target.setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e) => {
+    // the mouse button came up where we never heard it: end the gesture as cancelled
+    if (e.pointerType === 'mouse' && e.buttons === 0 && e.pointerId === TURN.id) return endTurn(e, true);
     const was = TURN.mode;
     if (move(e) && was === 'pending') setHovered(null); // the drag parks any hover preview
   };

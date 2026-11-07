@@ -41,7 +41,11 @@ const U = Object.fromEntries(Object.keys(URLS).map((n) => [n, uniforms(0)]));
 const GHOST = Object.fromEntries(Object.keys(URLS).map((n) => [n, uniforms(1)]));
 
 /** Smoothly approach a target (critically damped enough for UI motion). */
-const approach = (v, target, dt, rate) => v + (target - v) * Math.min(1, dt * rate);
+// Lands exactly on the target: blur and lift > 0 switch on the costly shader branches (materials.js).
+const approach = (v, target, dt, rate) => {
+  const n = v + (target - v) * Math.min(1, dt * rate);
+  return Math.abs(target - n) < 1e-4 ? target : n;
+};
 
 function Layer({ name, active, spread, reduced }) {
   const map = useKTX2Texture(URLS[name]);

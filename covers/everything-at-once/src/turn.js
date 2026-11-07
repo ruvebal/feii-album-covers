@@ -39,6 +39,7 @@ export const TURN = {
   q: new Quaternion(), // shown orientation (Record writes it)
   target: new Quaternion(), // where the drag has put the record
   flat: 1, // 1 = layers at their depths, 0 = flattened onto the sleeve (Diorama reads it)
+  drags: 0, // gestures that became a drag (the checks assert a drag really happened)
 };
 
 export function resetTurn(face = 'front') {
@@ -71,7 +72,7 @@ export function move(e) {
   if (e.pointerId !== TURN.id) return false;
   if (TURN.mode === 'pending') {
     if (Math.hypot(e.clientX - TURN.x0, e.clientY - TURN.y0) < TAP) return false;
-    Object.assign(TURN, { mode: 'drag', yaw: 0, vx: 0, vy: 0 });
+    Object.assign(TURN, { mode: 'drag', yaw: 0, vx: 0, vy: 0, drags: TURN.drags + 1 });
     TURN.target.copy(TURN.q); // grab the record where it is shown
     TURN.x = TURN.x0; // the travel before the threshold counts too
     TURN.y = TURN.y0;
