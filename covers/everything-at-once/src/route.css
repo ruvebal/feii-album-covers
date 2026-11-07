@@ -24,7 +24,23 @@
   width: min(92vw, calc(100vw - 24rem), calc(100dvh - 2rem - var(--eao-nav)));
   aspect-ratio: 1;
   background: #1c0f26 center / cover no-repeat;
-  touch-action: pan-y; /* vertical scrolling keeps working; a horizontal flick turns the record */
+}
+
+.eao__hit {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none; /* only the record's own polygon takes pointers; the rest of the stage scrolls */
+  /* one finger on the polygon turns the record; two still zoom the page. Set here, not on the polygon:
+     Chromium ignores touch-action on SVG shapes, and this box only gets touches through the polygon. */
+  touch-action: pinch-zoom;
+}
+
+.eao__hit polygon {
+  fill: transparent;
+  pointer-events: all;
 }
 
 .eao__cover canvas {

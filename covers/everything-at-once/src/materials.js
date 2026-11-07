@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useLoader } from '@react-three/fiber';
 import * as THREE from 'three/webgpu';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
-import { color, float, mx_fractal_noise_float, texture, uniform, uv, vec2, vec3, vec4, max, mix, smoothstep, step } from 'three/tsl';
+import { color, float, Fn, If, mx_fractal_noise_float, texture, uniform, uv, vec2, vec3, vec4, max, mix, smoothstep, step } from 'three/tsl';
 
 /**
  * How far the backdrop (the star's yellow and its lettering) recedes while a member is selected, 0..1.
@@ -35,51 +35,60 @@ const recede = (rgb, k) => mix(rgb, vec3(rgb.dot(vec3(0.299, 0.587, 0.114))), k.
  *   clip: import('three/tsl').UniformNode<import('three').Vector4>, lift: import('three/tsl').UniformNode<number> }} u
  */
 export function layerMaterial(map, u, seed = 0, backdrop = false) {
-  const d = vec2(u.shift, u.shift.mul(0.6));
-  const r = texture(map, uv().add(d));
-  const g = texture(map, uv());
-  const b = texture(map, uv().sub(d));
-  const sharp = vec4(r.r, g.g, b.b, max(max(r.a, g.a), b.a));
-  const o = u.blur.mul(0.004);
-  const tap = (dx, dy) => texture(map, uv().add(vec2(dx, dy).mul(o))).bias(u.blur.mul(3));
-  const soft = tap(1, 0.5).add(tap(-1, -0.5)).add(tap(-0.5, 1)).add(tap(0.5, -1)).mul(0.25);
-  const grey = vec3(soft.rgb.dot(vec3(0.299, 0.587, 0.114)));
-  // Only the colour blurs; the outline stays the sharp one. A blurred alpha spread past the edge and read as
-  // a glow over the yellow star, and two neighbouring blurred sides fading at their shared edge let the
-  // card show through as a seam.
-  const dim = vec4(mix(soft.rgb, grey, u.blur.mul(0.45)).mul(u.blur.mul(-0.2).add(1)), sharp.a);
-  const p = uv();
-  const inside = step(u.clip.x, p.x).mul(step(u.clip.y, p.y)).mul(step(p.x, u.clip.z)).mul(step(p.y, u.clip.w));
-  const c0 = mix(sharp, dim, u.blur);
-  const c = backdrop ? vec4(recede(c0.rgb, RECEDE), c0.a) : c0; // the star's lettering recedes with the page
-  // Torn paper. `dist` ~ signed distance to the silhouette (+ inside), from alpha averaged at mip 3.
-  const tap3 = (dx, dy) => texture(map, p.add(vec2(dx, dy))).bias(3).a;
-  const e = 0.0015;
-  const dist = tap3(e, 0).add(tap3(-e, 0)).add(tap3(0, e)).add(tap3(0, -e)).mul(0.25).sub(0.5);
-  const q = vec3(p.mul(30), float(seed));
-  const wobble = mx_fractal_noise_float(q, 3, 2, 0.5).mul(0.32); // the tear's meander
-  const fray = mx_fractal_noise_float(vec3(p.mul(260), float(seed + 7)), 2, 2, 0.5).mul(0.09); // fine fibres
-  const tear = dist.add(wobble);
-  const keep = smoothstep(-0.01, 0.03, tear); // paper that stays on the piece
-  // Fibre band past the tear line, only near the real edge: far from the piece `dist` bottoms out at -0.5
-  // and the noise alone reached the band, scattering fibres like dirt over the blurred sides.
-  const nearEdge = smoothstep(-0.49, -0.4, dist);
-  const core = smoothstep(-0.3, -0.05, tear.add(fray)).mul(keep.oneMinus()).mul(nearEdge);
-  const art = c.a.mul(keep); // the print, torn
-  const paperA = max(keep, core); // the piece: print + its torn paper edge
-  const paper = color('#f6eddb');
-  const tornRgb = mix(paper, c.rgb, art.div(max(paperA, 1e-4)));
-  const tornA = paperA;
-  const lift = u.lift;
-  const pieceA = mix(c.a, tornA, lift);
-  const pieceRgb = mix(c.rgb, tornRgb, lift);
-  // Shadow of the torn piece, cast down-right (light from the top-left) onto the page below.
-  const shadow = texture(map, p.add(vec2(-0.006, 0.009))).bias(4).a.mul(0.55).mul(lift);
-  const outside = pieceA.oneMinus();
-  const a = pieceA.add(outside.mul(shadow));
-  const rgb = pieceRgb.mul(pieceA).add(color('#2a1030').mul(shadow).mul(outside)).div(max(a, 1e-4));
   const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false });
-  m.colorNode = vec4(rgb, a.mul(inside));
+  // The blur and the tear only run while in use: both are branches on a uniform (the same for every
+  // pixel), so a side at rest pays for three taps, not for twelve plus five octaves of noise. Six
+  // full-sleeve layers stack over every pixel, so this decides the frame time on integrated GPUs.
+  m.colorNode = Fn(() => {
+    const p = uv();
+    const d = vec2(u.shift, u.shift.mul(0.6));
+    const r = texture(map, p.add(d));
+    const g = texture(map, p);
+    const b = texture(map, p.sub(d));
+    const sharp = vec4(r.r, g.g, b.b, max(max(r.a, g.a), b.a));
+    const c = sharp.toVar();
+    If(u.blur.greaterThan(0), () => {
+      const o = u.blur.mul(0.004);
+      const tap = (dx, dy) => texture(map, p.add(vec2(dx, dy).mul(o))).bias(u.blur.mul(3));
+      const soft = tap(1, 0.5).add(tap(-1, -0.5)).add(tap(-0.5, 1)).add(tap(0.5, -1)).mul(0.25);
+      const grey = vec3(soft.rgb.dot(vec3(0.299, 0.587, 0.114)));
+      // Only the colour blurs; the outline stays the sharp one. A blurred alpha spread past the edge and read
+      // as a glow over the yellow star, and two neighbouring blurred sides fading at their shared edge let
+      // the card show through as a seam.
+      const dim = vec4(mix(soft.rgb, grey, u.blur.mul(0.45)).mul(u.blur.mul(-0.2).add(1)), sharp.a);
+      c.assign(mix(sharp, dim, u.blur));
+    });
+    if (backdrop) c.rgb.assign(recede(c.rgb, RECEDE)); // the star's lettering recedes with the page
+    const out = c.toVar();
+    If(u.lift.greaterThan(0), () => {
+      // Torn paper. `dist` ~ signed distance to the silhouette (+ inside), from alpha averaged at mip 3.
+      const tap3 = (dx, dy) => texture(map, p.add(vec2(dx, dy))).bias(3).a;
+      const e = 0.0015;
+      const dist = tap3(e, 0).add(tap3(-e, 0)).add(tap3(0, e)).add(tap3(0, -e)).mul(0.25).sub(0.5);
+      const q = vec3(p.mul(30), float(seed));
+      const wobble = mx_fractal_noise_float(q, 3, 2, 0.5).mul(0.32); // the tear's meander
+      const fray = mx_fractal_noise_float(vec3(p.mul(260), float(seed + 7)), 2, 2, 0.5).mul(0.09); // fine fibres
+      const tear = dist.add(wobble);
+      const keep = smoothstep(-0.01, 0.03, tear); // paper that stays on the piece
+      // Fibre band past the tear line, only near the real edge: far from the piece `dist` bottoms out at -0.5
+      // and the noise alone reached the band, scattering fibres like dirt over the blurred sides.
+      const nearEdge = smoothstep(-0.49, -0.4, dist);
+      const core = smoothstep(-0.3, -0.05, tear.add(fray)).mul(keep.oneMinus()).mul(nearEdge);
+      const art = c.a.mul(keep); // the print, torn
+      const paperA = max(keep, core); // the piece: print + its torn paper edge
+      const tornRgb = mix(color('#f6eddb'), c.rgb, art.div(max(paperA, 1e-4)));
+      const lift = u.lift;
+      const pieceA = mix(c.a, paperA, lift);
+      const pieceRgb = mix(c.rgb, tornRgb, lift);
+      // Shadow of the torn piece, cast down-right (light from the top-left) onto the page below.
+      const shadow = texture(map, p.add(vec2(-0.006, 0.009))).bias(4).a.mul(0.55).mul(lift);
+      const outside = pieceA.oneMinus();
+      const a = pieceA.add(outside.mul(shadow));
+      out.assign(vec4(pieceRgb.mul(pieceA).add(color('#2a1030').mul(shadow).mul(outside)).div(max(a, 1e-4)), a));
+    });
+    const inside = step(u.clip.x, p.x).mul(step(u.clip.y, p.y)).mul(step(p.x, u.clip.z)).mul(step(p.y, u.clip.w));
+    return vec4(out.rgb, out.a.mul(inside));
+  })();
   return m;
 }
 

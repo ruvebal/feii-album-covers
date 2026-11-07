@@ -1,16 +1,19 @@
 // covers/everything-at-once — the record: a sleeve (front diorama, Karu's back face) and the vinyl.
 //
-// The sleeve tilts a few degrees towards the pointer on a spring (no OrbitControls), flips about its
-// vertical axis to show the back, and lets the vinyl slide out of its open (right) edge, spinning, with
-// Karu's label. While the vinyl is out the camera pulls back so the whole motion stays on the stage.
+// The sleeve tilts a few degrees towards the pointer on a spring (no OrbitControls), turns freely while
+// dragged (turn.js decides the face it settles on) and lets the vinyl slide out of its open (right)
+// edge, spinning, with Karu's label. While the vinyl is out the camera pulls back so the whole motion
+// stays on the stage.
 
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three/webgpu';
+import { MathUtils, Vector3 } from 'three/webgpu';
 import { color, float, length, mix, sin, uv, vec3 } from 'three/tsl';
 import { useKTX2Texture } from '../../../src/lib/ktx2.js';
 import { faceMaterial, useReleaseOnUnmount } from './materials.js';
 import Diorama, { FRONT_Z, VIEW_DISTANCE } from './Diorama.jsx';
+import { coastStep, FACES, TURN } from './turn.js';
 
 const BACK_URL = new URL('../public/back.ktx2', import.meta.url).href;
 const LABEL_URL = new URL('../public/label.ktx2', import.meta.url).href;
@@ -21,6 +24,38 @@ const TILT = 0.07; // radians at the stage's edge
 const DISC = 0.96; // vinyl radius (the sleeve is 2 x 2)
 const SPIN = (33.3 / 60) * Math.PI * 2; // 33 1/3 rpm
 const approach = (v, target, dt, rate) => v + (target - v) * Math.min(1, dt * rate);
+const FLAT_FROM = 25; // deg from upright where the shadow box starts to flatten onto the sleeve
+const FLAT_TO = 45;
+// The sleeve's corners, for the projected hit polygon (preallocated: written every frame).
+const CORNERS = [-1, 1].flatMap((x) => [-1, 1].flatMap((y) => [-1, 1].map((z) => new Vector3(x, y, z * FRONT_Z))));
+const P = CORNERS.map(() => new Vector3());
+const ORDER = new Int8Array(8);
+const HULL = new Int8Array(9);
+const byX = (a, b) => P[a].x - P[b].x || P[a].y - P[b].y;
+const cross = (o, a, b) => (P[a].x - P[o].x) * (P[b].y - P[o].y) - (P[a].y - P[o].y) * (P[b].x - P[o].x);
+
+/** Convex hull (monotone chain) of the 8 projected corners into `TURN.hull` (an 8-point SVG polygon). */
+function writeHull(size) {
+  for (let i = 0; i < 8; i++) ORDER[i] = i;
+  ORDER.sort(byX);
+  let k = 0;
+  for (let i = 0; i < 8; i++) {
+    while (k >= 2 && cross(HULL[k - 2], HULL[k - 1], ORDER[i]) <= 0) k--;
+    HULL[k++] = ORDER[i];
+  }
+  for (let i = 6, lo = k + 1; i >= 0; i--) {
+    while (k >= lo && cross(HULL[k - 2], HULL[k - 1], ORDER[i]) <= 0) k--;
+    HULL[k++] = ORDER[i];
+  }
+  k--; // the last point repeats the first
+  const pts = TURN.hull;
+  for (let i = 0; i < 8; i++) {
+    const c = P[HULL[Math.min(i, k - 1)]]; // unused slots repeat the last hull point
+    const pt = pts.getItem(i);
+    pt.x = ((c.x + 1) / 2) * size.width;
+    pt.y = ((1 - c.y) / 2) * size.height;
+  }
+}
 
 function useVinylMaterial() {
   return useMemo(() => {
@@ -66,15 +101,24 @@ export default function Record({ face, out, reduced, active, spread, onHover, on
   const flip = useRef();
   const disc = useRef();
   const spin = useRef();
-  const s = useRef({ rx: 0, ry: 0, flip: face === 'back' ? Math.PI : 0, out: 0, cam: 0 });
-  useFrame(({ pointer, camera }, delta) => {
+  const s = useRef({ rx: 0, ry: 0, out: 0, cam: 0 });
+  useFrame(({ pointer, camera, size }, delta) => {
     const dt = Math.min(delta, 0.05); // back from a hidden tab: no snap, no jump in the vinyl's spin
     const st = s.current;
     const rate = reduced ? 1e9 : 6;
     const k = reduced ? 1 : dt;
-    st.rx = approach(st.rx, reduced ? 0 : -pointer.y * TILT, k, rate);
-    st.ry = approach(st.ry, reduced ? 0 : pointer.x * TILT, k, rate);
-    st.flip = approach(st.flip, face === 'back' ? Math.PI : 0, k, reduced ? 1e9 : 5);
+    const still = TURN.mode === 'idle' || TURN.mode === 'pending'; // no hover tilt while handled
+    st.rx = approach(st.rx, reduced || !still ? 0 : -pointer.y * TILT, k, rate);
+    st.ry = approach(st.ry, reduced || !still ? 0 : pointer.x * TILT, k, rate);
+    // Turning: the drag (or its coast) moves the target; otherwise it is the upright face. The shown
+    // orientation follows more slowly than the cursor.
+    coastStep(dt);
+    if (still) TURN.target.copy(FACES[face]);
+    if (reduced) TURN.q.copy(TURN.target);
+    else TURN.q.slerp(TURN.target, 1 - Math.exp(-dt * (TURN.mode === 'drag' ? 12 : 7)));
+    // Angle to the nearest upright face (front = identity, back = half turn about y).
+    const near = (2 * Math.acos(Math.min(1, Math.max(Math.abs(TURN.q.w), Math.abs(TURN.q.y))))) / MathUtils.DEG2RAD;
+    TURN.flat = 1 - MathUtils.smoothstep(near, FLAT_FROM, FLAT_TO);
     st.out = approach(st.out, out ? 1 : 0, k, reduced ? 1e9 : 4);
     // The opening: the record arrives a little tilted and further back and settles in as the layers
     // spread to their depths (head-on the spread alone is invisible: the layers are scale-compensated).
@@ -82,12 +126,18 @@ export default function Record({ face, out, reduced, active, spread, onHover, on
     const e = o * o * (3 - 2 * o); // smoothstep: eases into place
     tilt.current.rotation.set(st.rx + e * 0.45, st.ry - e * 0.35, e * 0.06);
     tilt.current.position.z = -e * 0.9;
-    flip.current.rotation.y = st.flip;
+    flip.current.quaternion.copy(TURN.q);
     disc.current.position.x = st.out * 1.15;
     if (!reduced && st.out > 0.01) spin.current.rotation.z -= SPIN * dt;
     // Pull back while the vinyl is out, so sleeve + disc fit the square stage.
     camera.position.set(st.out * 0.57, 0, VIEW_DISTANCE + FRONT_Z + st.out * 3.2);
     camera.lookAt(st.out * 0.57, 0, 0);
+    if (TURN.hull) {
+      flip.current.updateWorldMatrix(true, false);
+      camera.updateMatrixWorld();
+      for (let i = 0; i < 8; i++) P[i].copy(CORNERS[i]).applyMatrix4(flip.current.matrixWorld).project(camera);
+      writeHull(size);
+    }
   });
 
   return (

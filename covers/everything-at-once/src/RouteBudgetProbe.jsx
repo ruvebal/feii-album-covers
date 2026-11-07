@@ -1,6 +1,6 @@
 // covers/everything-at-once — the budget probe for this route's renderer.
 //
-// The route renders with WebGPURenderer (TSL materials). There `info.render.calls` counts render()
+// The route renders with WebGPURenderer forced onto its WebGL 2 backend (TSL materials). There `info.render.calls` counts render()
 // invocations over the renderer's lifetime, so the shared Unit 8 probe would report an ever-growing
 // number. This probe reports the same BudgetSample shape with `calls` = draw calls of one whole frame:
 // it turns auto-reset off, resets once per R3F frame, and reads before the next frame renders.
@@ -35,10 +35,14 @@ export default function RouteBudgetProbe({ onSample, fps = false, debug = false 
   useEffect(() => {
     const { info } = get().gl;
     info.autoReset = false;
-    if (debug) window.__eaoScene = get().scene; // for scripts/route-check.mjs: finite transforms
+    if (debug) {
+      window.__eaoScene = get().scene; // for scripts/route-check.mjs: finite transforms
+      window.__eaoR3F = get; // and timed renders (GPU cost per frame)
+    }
     return () => {
       info.autoReset = true;
       delete window.__eaoScene;
+      delete window.__eaoR3F;
     };
   }, [get, debug]);
 

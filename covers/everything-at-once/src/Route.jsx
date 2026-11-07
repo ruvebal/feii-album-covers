@@ -3,7 +3,7 @@
 // WebGL/WebGPU, with the title, members, record controls, tracklist and credits as DOM.
 
 import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, events as createPointerEvents, useFrame } from '@react-three/fiber';
 import { useSearchParams } from 'react-router-dom';
 import * as THREE from 'three/webgpu';
 import { withinCeiling } from '../../../src/lib/budget.js';
@@ -13,12 +13,12 @@ import { MEMBERS, TRACKS } from './members.js';
 import Record from './Record.jsx';
 import { FRONT_Z, VIEW_DISTANCE } from './Diorama.jsx';
 import RouteBudgetProbe from './RouteBudgetProbe.jsx';
+import { move, press, release, resetTurn, TURN } from './turn.js';
 import './route.css';
 
 const DPR = [1, 1.5];
 const POSTER_URL = new URL('../public/poster.jpg', import.meta.url).href;
 const OPENING_KEY = 'everything-at-once:opened'; // the opening plays once per browser session
-const FLICK = 40; // px of mostly-horizontal travel that turns the record over
 // Sketchfab sources recorded in docs/ktx2-note.md.
 const MODEL_CREDITS = [
   ['Ship in a bottle', 'Loïc Norgeot', 'CC BY-NC 4.0'],
@@ -30,6 +30,28 @@ const MODEL_CREDITS = [
   ['Metronome', 'burnedhrum', 'CC BY 4.0'],
 ];
 const byId = (id) => MEMBERS.find((m) => m.id === id) ?? null;
+
+/** R3F events come from the whole stage (the canvas sits under the DOM hit polygon), normalized against
+ *  the canvas, so the polygon and the scene's own hit tests see the same pointer. */
+const stageEvents = (store) => ({
+  ...createPointerEvents(store),
+  compute(event, state) {
+    const r = state.gl.domElement.getBoundingClientRect();
+    state.pointer.set(((event.clientX - r.left) / r.width) * 2 - 1, -((event.clientY - r.top) / r.height) * 2 + 1);
+    state.raycaster.setFromCamera(state.pointer, state.camera);
+  },
+});
+
+/** The sleeve's projected outline (Record writes its 8 points every frame) as SVG point slots. */
+const bindHull = (el) => {
+  if (!el) return;
+  // StrictMode attaches the ref twice: top up to 8 slots instead of appending 8 each time
+  while (el.points.numberOfItems < 8) el.points.appendItem(el.ownerSVGElement.createSVGPoint());
+  TURN.hull = el.points;
+  return () => {
+    TURN.hull = null;
+  };
+};
 
 // Local Phase A probes (src/probe/, git-ignored), dev server only: ?probe=<name> loads ./probe/<Name>Probe.jsx.
 // The DEV guard keeps them out of production builds even when the files exist locally.
@@ -101,8 +123,7 @@ function CoverRoute() {
   const spread = useRef(1);
   const opening = useRef(false);
   const pendingOpening = useRef(false);
-  const flick = useRef(null);
-  const flickedAt = useRef(0);
+  const flickedAt = useRef(0); // when the last drag ended: its pointer-up/click is not a tap
 
   // The opening: consumed as soon as it starts (also when reduced motion skips it), so leaving and
   // coming back in the same session never replays it.
@@ -138,11 +159,20 @@ function CoverRoute() {
 
   useEffect(() => {
     document.documentElement.classList.add('route-everything-at-once');
+    resetTurn(); // one record at a time: the gesture state is module-level
     return () => {
+      resetTurn();
       document.documentElement.classList.remove('route-everything-at-once');
       document.body.style.cursor = 'auto';
     };
   }, []);
+  useEffect(() => {
+    if (!debug) return;
+    window.__eaoTurn = TURN; // scripts/route-check.mjs reads the gesture state
+    return () => {
+      delete window.__eaoTurn;
+    };
+  }, [debug]);
   useEffect(() => {
     document.body.style.cursor = hovered ? 'pointer' : 'auto';
   }, [hovered]);
@@ -167,12 +197,10 @@ function CoverRoute() {
   // Hover previews come from a mouse only: a tap also fires enter/move events, which would leave the
   // tapped member previewed after a phone user dismissed it.
   const preview = (id, pointerType = 'mouse') => {
-    if (performing && pointerType === 'mouse') setHovered(id);
+    if (performing && pointerType === 'mouse' && (TURN.mode === 'idle' || TURN.mode === 'pending')) setHovered(id);
   };
-  const turnOver = () => {
-    setOut(false);
-    setFace((v) => (v === 'front' ? 'back' : 'front'));
-  };
+  // Turning keeps the vinyl where it is: extraction survives a turn.
+  const turnOver = () => setFace((v) => (v === 'front' ? 'back' : 'front'));
   const toggleRecord = () => {
     setFace('front');
     setOut((v) => !v);
@@ -182,25 +210,29 @@ function CoverRoute() {
   const onKeyDown = (e) => {
     settle();
     if (e.key === 'Escape') dismiss();
-  };
-
-  const onPointerDown = (e) => {
-    stage.current?.focus({ preventScroll: true }); // so Escape after a canvas selection reaches the route
-    flick.current = { x: e.clientX, y: e.clientY, done: false };
-  };
-  const onPointerMove = (e) => {
-    const f = flick.current;
-    if (f && e.buttons === 0) flick.current = null; // released outside the stage: not a drag any more
-    if (!f || f.done || e.buttons === 0) return;
-    const dx = e.clientX - f.x;
-    if (Math.abs(dx) > FLICK && Math.abs(dx) > Math.abs(e.clientY - f.y) * 1.5) {
-      f.done = true;
-      flickedAt.current = Date.now();
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && e.target === stage.current) {
+      e.preventDefault();
       turnOver();
     }
   };
-  const endFlick = () => {
-    flick.current = null;
+
+  // Drag-to-turn: a gesture starts only on the sleeve's projected polygon, which owns one pointer (the
+  // first) through release; elsewhere the page scrolls and pinch-zoom stays native.
+  const onPointerDown = (e) => {
+    stage.current?.focus({ preventScroll: true }); // so Escape after a canvas selection reaches the route
+    if (!e.target.dataset?.hit || TURN.id !== -1) return; // off the record, or a second finger
+    press(e, face);
+    e.target.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e) => {
+    const was = TURN.mode;
+    if (move(e) && was === 'pending') setHovered(null); // the drag parks any hover preview
+  };
+  const endTurn = (e, cancel) => {
+    const to = release(e, cancel, reduced);
+    if (!to) return;
+    flickedAt.current = Date.now();
+    setFace(to);
   };
 
   return (
@@ -212,17 +244,20 @@ function CoverRoute() {
         style={{ backgroundImage: ready && !failed ? 'none' : `url(${POSTER_URL})` }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={endFlick}
-        onPointerCancel={endFlick}
-        onPointerLeave={endFlick}
+        onPointerUp={(e) => endTurn(e, false)}
+        onPointerCancel={(e) => endTurn(e, true)}
+        onLostPointerCapture={(e) => endTurn(e, true)}
       >
         <SceneBoundary onError={() => setFailed(true)}>
           <Canvas
             flat
             dpr={DPR}
+            eventSource={stage}
+            events={stageEvents}
             camera={{ position: [0, 0, VIEW_DISTANCE + FRONT_Z], fov: 30 }}
             gl={async (props) => {
-              const r = new THREE.WebGPURenderer(props); // falls back to WebGL 2 where WebGPU is missing
+              // TSL on the WebGL 2 backend everywhere (course: WebGL); TSL compiles to GLSL there
+              const r = new THREE.WebGPURenderer({ ...props, forceWebGL: true });
               await r.init();
               return r;
             }}
@@ -243,6 +278,9 @@ function CoverRoute() {
             <RouteBudgetProbe onSample={setBudget} fps={fps} debug={debug} />
           </Canvas>
         </SceneBoundary>
+        <svg className="eao__hit" aria-hidden="true">
+          <polygon ref={bindHull} data-hit="sleeve" />
+        </svg>
         <hgroup className="eao__title">
           <h1>Everything at Once</h1>
           <p>Texas Red</p>

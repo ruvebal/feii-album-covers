@@ -10,6 +10,8 @@ Scene (V2, the record): Karu's cover as six layered planes (star + five member s
 Unit cap, any scene: desktop ≤ 200 calls, mobile ≤ 80.
 Accepted ceiling for this tree: calls ≤ 16, triangles ≤ 400, geometries ≤ 16, textures ≤ 12 (`src/budget.js`). Mobile is well inside the cap.
 
+Renderer: `WebGPURenderer` with `forceWebGL: true` (7 Nov), so every browser renders through its WebGL 2 backend, as the course asks, while the materials stay in TSL (compiled to GLSL on that backend). `?debug=fps` names the backend and GPU.
+
 How calls are measured: on `WebGPURenderer`, `info.render.calls` counts render() invocations over the renderer's lifetime, so the shared Unit 8 probe would report an ever-growing number. `src/RouteBudgetProbe.jsx` reports the same sample shape with `calls` = the draw calls of one whole frame (auto-reset off, one reset per R3F frame, read before the next render). One of the 14 is the renderer's own output pass (colour-space conversion: 1 call, 1 triangle).
 
 Pins: three@0.185.1, @react-three/fiber@9.8.2, @react-three/drei@10.7.9, react@19.3.1 (this repo's package.json).

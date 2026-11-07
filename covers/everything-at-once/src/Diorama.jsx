@@ -14,6 +14,7 @@ import { useKTX2Texture } from '../../../src/lib/ktx2.js';
 import { layerMaterial, RECEDE, useReleaseOnUnmount } from './materials.js';
 import { MEMBERS } from './members.js';
 import LAYERS from './layers.json'; // scripts/route_assets.py
+import { TURN } from './turn.js';
 
 /** Camera distance from the sleeve's front at rest; Record.jsx frames the sleeve with it. */
 export const VIEW_DISTANCE = 1 / Math.tan((15 * Math.PI) / 180);
@@ -77,23 +78,26 @@ function Layer({ name, active, spread, reduced }) {
     U[name].blur.value = st.blur;
     if (name === 'star') RECEDE.value = approach(RECEDE.value, active ? 1 : 0, k, rate); // the page recedes too
     U[name].shift.value = 0.006 * st.kick * st.kick;
-    const z = FRONT_Z + 0.001 + info.depth * DEPTH * spread.current + st.lift;
+    // Turned away from upright, the shadow box flattens onto the sleeve (lift and growth with it).
+    const f = TURN.flat;
+    const z = FRONT_Z + 0.001 + (info.depth * DEPTH * spread.current + st.lift) * f;
+    const grow = 1 + (st.grow - 1) * f;
     // The camera sits VIEW_DISTANCE in front of the sleeve face (z = FRONT_Z); this keeps every layer's
     // rest projection identical to the drawing.
     const comp = (VIEW_DISTANCE + FRONT_Z - z) / VIEW_DISTANCE;
     const p = pivot.current;
     p.position.set(ax * comp, ay * comp, z);
-    p.scale.setScalar(comp * st.grow);
+    p.scale.setScalar(comp * grow);
     // The sleeve's square, seen from the camera at this layer's depth, spans ±comp. In the layer's own
     // coordinates (world = P + S * (L - A)) that is L = (±comp - P) / S + A; uv = (L + 1) / 2.
-    const S = comp * st.grow;
+    const S = comp * grow;
     const lo = (e, a) => ((-comp - e) / S + a + 1) / 2;
     const hi = (e, a) => ((comp - e) / S + a + 1) / 2;
     U[name].clip.value.set(lo(ax * comp, ax), lo(ay * comp, ay), hi(ax * comp, ax), hi(ay * comp, ay));
-    U[name].lift.value = st.lift / LIFT;
+    U[name].lift.value = (st.lift / LIFT) * f;
     // The ghost stays at the rest pose (just behind the lifted piece) while this side is up.
     const g = ghost.current;
-    const zr = FRONT_Z + 0.001 + info.depth * DEPTH * spread.current;
+    const zr = FRONT_Z + 0.001 + info.depth * DEPTH * spread.current * f;
     const cr = (VIEW_DISTANCE + FRONT_Z - zr) / VIEW_DISTANCE;
     g.visible = st.lift > 0.0005;
     g.position.set(0, 0, zr - 0.0005);
