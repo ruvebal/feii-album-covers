@@ -126,9 +126,10 @@ function Layer({ name, active, spread, reduced }) {
 
 /**
  * @param {{ active: string | null, spread: { current: number }, reduced: boolean,
- *   onHover: (id: string | null, pointerType?: string) => void, onSelect: (id: string) => void, interactive: boolean }} props
+ *   onHover: (id: string | null, pointerType?: string) => void, onSelect: (id: string) => void, onBlank: () => void,
+ *   hoverable: boolean, selectable: boolean }} props
  */
-export default function Diorama({ active, spread, reduced, onHover, onSelect, interactive }) {
+export default function Diorama({ active, spread, reduced, onHover, onSelect, onBlank, hoverable, selectable }) {
   const sides = useRef(null);
   useEffect(() => {
     let live = true;
@@ -165,16 +166,18 @@ export default function Diorama({ active, spread, reduced, onHover, onSelect, in
       {Object.keys(URLS).map((n) => (
         <Layer key={n} name={n} active={active} spread={spread} reduced={reduced} />
       ))}
-      {/* Hit plane over the whole front: the side under the pointer comes from the side map. */}
+      {/* Hit plane over the whole front: the side under the pointer comes from the side map. Hover previews
+          only with the vinyl in; an explicit click selects on the front either way, elsewhere it is blank. */}
       <mesh
         position={[0, 0, FRONT_Z + DEPTH + LIFT + 0.01]}
-        onPointerMove={interactive ? (e) => onHover(sideAt(e), e.pointerType) : undefined}
-        onPointerOut={interactive ? () => onHover(null) : undefined}
+        onPointerMove={hoverable ? (e) => onHover(sideAt(e), e.pointerType) : undefined}
+        onPointerOut={hoverable ? () => onHover(null) : undefined}
         onClick={
-          interactive
+          selectable
             ? (e) => {
                 const id = sideAt(e);
                 if (id) onSelect(id);
+                else onBlank();
               }
             : undefined
         }

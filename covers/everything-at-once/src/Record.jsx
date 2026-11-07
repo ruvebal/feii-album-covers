@@ -2,8 +2,11 @@
 //
 // The sleeve tilts a few degrees towards the pointer on a spring (no OrbitControls), turns freely while
 // dragged (turn.js decides the face it settles on) and lets the vinyl slide out of its open (right)
-// edge, spinning, with Karu's label. While the vinyl is out the camera pulls back so the whole motion
-// stays on the stage.
+// edge, spinning, with Karu's label on both faces. The disc is pulled by hand (turn.js) or by a tap on its
+// edge; a sliver always shows on the front so it reads as something to pull, and a mouse over the edge
+// makes it peek further. While the vinyl
+// is out the camera pulls back so the whole motion stays on the stage. Each frame also projects the DOM hit
+// zones: the sleeve's outline and the vinyl's edge (or the exposed disc).
 
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -23,6 +26,10 @@ const THICK = FRONT_Z * 2;
 const TILT = 0.07; // radians at the stage's edge
 const DISC = 0.96; // vinyl radius (the sleeve is 2 x 2)
 const SPIN = (33.3 / 60) * Math.PI * 2; // 33 1/3 rpm
+const TRAVEL = 1.15; // disc centre at full extraction: about 60 % of the disc out
+const PEEK = 0.16; // mouse over the edge: the disc comes out a little further
+const SLIVER = 0.085; // about 3 % of the disc stays visible while tucked in
+const ZONE = 0.26; // hit strip width (sleeve units) at rest: at least 44 CSS px on a 358 px phone stage
 const approach = (v, target, dt, rate) => v + (target - v) * Math.min(1, dt * rate);
 const FLAT_FROM = 25; // deg from upright where the shadow box starts to flatten onto the sleeve
 const FLAT_TO = 45;
@@ -57,6 +64,30 @@ function writeHull(size) {
   }
 }
 
+const Q = [new Vector3(), new Vector3(), new Vector3(), new Vector3()];
+const OFF = -1000; // px: a hidden zone collapses off the stage
+/** A sleeve-local rectangle (x0..x1, -y..y, mid-plane) projected into a 4-point SVG polygon. */
+function writeQuad(pts, x0, x1, y, matrix, camera, size) {
+  if (!pts) return;
+  Q[0].set(x0, -y, 0);
+  Q[1].set(x1, -y, 0);
+  Q[2].set(x1, y, 0);
+  Q[3].set(x0, y, 0);
+  for (let i = 0; i < 4; i++) {
+    const c = Q[i].applyMatrix4(matrix).project(camera);
+    const pt = pts.getItem(i);
+    pt.x = ((c.x + 1) / 2) * size.width;
+    pt.y = ((1 - c.y) / 2) * size.height;
+  }
+}
+function hideQuad(pts) {
+  if (!pts) return;
+  for (let i = 0; i < 4; i++) {
+    const pt = pts.getItem(i);
+    pt.x = pt.y = OFF;
+  }
+}
+
 function useVinylMaterial() {
   return useMemo(() => {
     // Black vinyl with fine grooves and a soft sheen band; the label is a separate disc.
@@ -70,10 +101,11 @@ function useVinylMaterial() {
 }
 
 /**
- * @param {{ face: 'front' | 'back', out: boolean, reduced: boolean, active: string | null,
- *   spread: { current: number }, onHover: (id: string | null) => void, onSelect: (id: string) => void }} props
+ * @param {{ face: 'front' | 'back', out: boolean, reduced: boolean, active: string | null, hoverable: boolean,
+ *   spread: { current: number }, onHover: (id: string | null) => void, onSelect: (id: string) => void,
+ *   onBlank: () => void }} props
  */
-export default function Record({ face, out, reduced, active, spread, onHover, onSelect }) {
+export default function Record({ face, out, reduced, active, hoverable, spread, onHover, onSelect, onBlank }) {
   const back = useKTX2Texture(BACK_URL);
   const label = useKTX2Texture(LABEL_URL);
   const spine = useKTX2Texture(SPINE_URL);
@@ -119,7 +151,12 @@ export default function Record({ face, out, reduced, active, spread, onHover, on
     // Angle to the nearest upright face (front = identity, back = half turn about y).
     const near = (2 * Math.acos(Math.min(1, Math.max(Math.abs(TURN.q.w), Math.abs(TURN.q.y))))) / MathUtils.DEG2RAD;
     TURN.flat = 1 - MathUtils.smoothstep(near, FLAT_FROM, FLAT_TO);
-    st.out = approach(st.out, out ? 1 : 0, k, reduced ? 1e9 : 4);
+    // The vinyl: followed directly while pulled by hand; otherwise out, peeking, a touch sliver or in.
+    const pulling = TURN.zone === 'vinyl' && TURN.mode === 'drag';
+    const settled = face === 'front' && still && near < 2; // extraction starts only once upright
+    const tucked = settled ? (TURN.peek ? PEEK : SLIVER) : 0;
+    st.out = pulling ? TURN.pull : approach(st.out, out ? 1 : tucked, k, reduced ? 1e9 : 4);
+    TURN.shownOut = st.out;
     // The opening: the record arrives a little tilted and further back and settles in as the layers
     // spread to their depths (head-on the spread alone is invisible: the layers are scale-compensated).
     const o = 1 - spread.current;
@@ -127,23 +164,50 @@ export default function Record({ face, out, reduced, active, spread, onHover, on
     tilt.current.rotation.set(st.rx + e * 0.45, st.ry - e * 0.35, e * 0.06);
     tilt.current.position.z = -e * 0.9;
     flip.current.quaternion.copy(TURN.q);
-    disc.current.position.x = st.out * 1.15;
-    if (!reduced && st.out > 0.01) spin.current.rotation.z -= SPIN * dt;
-    // Pull back while the vinyl is out, so sleeve + disc fit the square stage.
-    camera.position.set(st.out * 0.57, 0, VIEW_DISTANCE + FRONT_Z + st.out * 3.2);
-    camera.lookAt(st.out * 0.57, 0, 0);
+    disc.current.position.x = st.out * TRAVEL;
+    if (!reduced && out && st.out > 0.3) spin.current.rotation.z -= SPIN * dt; // it plays only once out
+    // Pull back with the vinyl, so sleeve + disc fit the square stage (a peek or a sliver makes a little room
+    // too: at rest the sleeve fills the stage), centred towards the side the disc comes out of: the sleeve's
+    // x axis faces the other way on the back.
+    const q = TURN.q;
+    const cx = st.out * 0.57 * (1 - 2 * (q.y * q.y + q.z * q.z));
+    camera.position.set(cx, 0, VIEW_DISTANCE + FRONT_Z + st.out * 3.2);
+    camera.lookAt(cx, 0, 0);
+    flip.current.updateWorldMatrix(true, false);
+    camera.updateMatrixWorld();
+    const m = flip.current.matrixWorld;
     if (TURN.hull) {
-      flip.current.updateWorldMatrix(true, false);
-      camera.updateMatrixWorld();
-      for (let i = 0; i < 8; i++) P[i].copy(CORNERS[i]).applyMatrix4(flip.current.matrixWorld).project(camera);
+      for (let i = 0; i < 8; i++) P[i].copy(CORNERS[i]).applyMatrix4(m).project(camera);
       writeHull(size);
     }
+    // The disc's screen path from in to out, for pulling it by hand along its own axis.
+    const a = Q[0].set(0, 0, 0).applyMatrix4(m).project(camera);
+    const ax = a.x, ay = a.y;
+    const b = Q[0].set(TRAVEL, 0, 0).applyMatrix4(m).project(camera);
+    TURN.axisX = ((b.x - ax) / 2) * size.width;
+    TURN.axisY = (-(b.y - ay) / 2) * size.height;
+    // Hit zones. The vinyl's: its edge strip (extraction starts only on the settled front), or the exposed
+    // disc once out (returning works from either face).
+    // The strip widens as the camera pulls back, so it keeps its 44 px on screen.
+    const zone = ZONE * (1 + (st.out * 3.2) / (VIEW_DISTANCE + FRONT_Z));
+    if (out || pulling || settled) {
+      writeQuad(TURN.vinylZone, st.out > 0.5 ? 1 : 1 - zone, Math.max(1.02, st.out * TRAVEL + DISC), DISC, m, camera, size);
+    } else hideQuad(TURN.vinylZone);
   });
 
   return (
     <group ref={tilt}>
       <group ref={flip}>
-        <Diorama active={active} spread={spread} reduced={reduced} onHover={onHover} onSelect={onSelect} interactive={face === 'front' && !out} />
+        <Diorama
+          active={active}
+          spread={spread}
+          reduced={reduced}
+          onHover={onHover}
+          onSelect={onSelect}
+          onBlank={onBlank}
+          hoverable={hoverable}
+          selectable={face === 'front'}
+        />
         <mesh position={[0, 0, FRONT_Z - 0.0005]} material={mats.card}>
           <planeGeometry args={[2, 2]} />
         </mesh>
@@ -166,6 +230,13 @@ export default function Record({ face, out, reduced, active, spread, onHover, on
               <circleGeometry args={[DISC, 96]} />
             </mesh>
             <mesh position={[0, 0, 0.001]} material={mats.label}>
+              <circleGeometry args={[DISC * 0.34, 64]} />
+            </mesh>
+            {/* The rear face: single-sided circles turned to face backwards, so the label reads unmirrored. */}
+            <mesh rotation={[0, Math.PI, 0]} material={vinyl}>
+              <circleGeometry args={[DISC, 96]} />
+            </mesh>
+            <mesh position={[0, 0, -0.001]} rotation={[0, Math.PI, 0]} material={mats.label}>
               <circleGeometry args={[DISC * 0.34, 64]} />
             </mesh>
           </group>

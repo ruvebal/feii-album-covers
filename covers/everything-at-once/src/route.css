@@ -43,6 +43,18 @@
   pointer-events: all;
 }
 
+.eao__hit [data-hit='vinyl'] {
+  cursor: grab;
+}
+
+.eao__status:empty {
+  display: none;
+}
+
+.eao__status button {
+  margin-left: 0.5rem;
+}
+
 .eao__cover canvas {
   width: 100% !important;
   height: 100% !important;

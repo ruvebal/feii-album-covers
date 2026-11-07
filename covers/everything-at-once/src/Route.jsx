@@ -9,6 +9,7 @@ import * as THREE from 'three/webgpu';
 import { withinCeiling } from '../../../src/lib/budget.js';
 import usePrefersReducedMotion from '../../../src/lib/usePrefersReducedMotion.js';
 import { CEILING } from './budget.js';
+import { createTransport } from './audio.js';
 import { MEMBERS, TRACKS } from './members.js';
 import Record from './Record.jsx';
 import { FRONT_Z, VIEW_DISTANCE } from './Diorama.jsx';
@@ -39,18 +40,31 @@ const stageEvents = (store) => ({
     const r = state.gl.domElement.getBoundingClientRect();
     state.pointer.set(((event.clientX - r.left) / r.width) * 2 - 1, -((event.clientY - r.top) / r.height) * 2 + 1);
     state.raycaster.setFromCamera(state.pointer, state.camera);
+    // the vinyl zone is reserved: the member hit test never sees it (the ray points away; the pointer
+    // itself stays true, for the hover tilt)
+    if (event.target?.dataset?.hit === 'vinyl') state.raycaster.ray.direction.negate();
   },
 });
 
-/** The sleeve's projected outline (Record writes its 8 points every frame) as SVG point slots. */
-const bindHull = (el) => {
+/** A hit polygon's SVG point slots, written by Record every frame: the sleeve's projected outline (8 points)
+ *  and the vinyl zone (4). */
+const bindZone = (key, n) => (el) => {
   if (!el) return;
-  // StrictMode attaches the ref twice: top up to 8 slots instead of appending 8 each time
-  while (el.points.numberOfItems < 8) el.points.appendItem(el.ownerSVGElement.createSVGPoint());
-  TURN.hull = el.points;
+  // StrictMode attaches the ref twice: top up to n slots instead of appending n each time
+  while (el.points.numberOfItems < n) el.points.appendItem(el.ownerSVGElement.createSVGPoint());
+  TURN[key] = el.points;
   return () => {
-    TURN.hull = null;
+    TURN[key] = null;
   };
+};
+const bindHull = bindZone('hull', 8);
+const bindVinyl = bindZone('vinylZone', 4);
+const STATUS = {
+  off: () => '',
+  loading: (song) => `Loading ${song}…`,
+  playing: (song) => `Now playing: ${song}`,
+  blocked: () => 'The browser blocked the sound. Tap the disc to try again.',
+  missing: (song) => `${song}: no recording on this page yet.`,
 };
 
 // Local Phase A probes (src/probe/, git-ignored), dev server only: ?probe=<name> loads ./probe/<Name>Probe.jsx.
@@ -124,6 +138,8 @@ function CoverRoute() {
   const opening = useRef(false);
   const pendingOpening = useRef(false);
   const flickedAt = useRef(0); // when the last drag ended: its pointer-up/click is not a tap
+  const [sound, setSound] = useState({ state: 'off', song: null });
+  const transport = useRef(null);
 
   // The opening: consumed as soon as it starts (also when reduced motion skips it), so leaving and
   // coming back in the same session never replays it.
@@ -151,9 +167,10 @@ function CoverRoute() {
     if (reduced) settle();
   }, [reduced, settle]);
 
-  // The performance is visible only on the front with the vinyl put away; a retained selection survives.
-  const performing = face === 'front' && !out;
-  const active = performing ? (hovered ?? pinned) : null;
+  // Hover previews only on the front with the vinyl put away; with it out the retained member performs to
+  // its song; on the back nobody does (the selection is kept).
+  const hoverable = face === 'front' && !out;
+  const active = face !== 'front' ? null : out ? pinned : (hovered ?? pinned);
   const member = byId(active ?? pinned);
   const verdict = withinCeiling(budget, CEILING);
 
@@ -169,23 +186,41 @@ function CoverRoute() {
   useEffect(() => {
     if (!debug) return;
     window.__eaoTurn = TURN; // scripts/route-check.mjs reads the gesture state
+    window.__eaoAudio = transport; // ... and which songs are sounding
     return () => {
       delete window.__eaoTurn;
+      delete window.__eaoAudio;
     };
   }, [debug]);
   useEffect(() => {
     document.body.style.cursor = hovered ? 'pointer' : 'auto';
   }, [hovered]);
 
+  // The record's sound: out plays the retained member's song (or the interlude), in pauses.
+  useEffect(() => {
+    const t = createTransport(setSound);
+    transport.current = t;
+    return () => {
+      t.close();
+      transport.current = null;
+    };
+  }, []);
+  useEffect(() => transport.current?.setOn(out), [out]);
+  useEffect(() => transport.current?.setSong(byId(pinned)?.song ?? null), [pinned]);
+  /** Out or in. Called from the visitor's own gesture or key, so the sound is unlocked right there. */
+  const setRecordOut = useCallback((v) => {
+    if (v) transport.current?.unlock();
+    setOut(v);
+  }, []);
+
   const dismiss = useCallback(() => {
     setPinned(null);
     setHovered(null); // Escape used to leave the hovered/focused member visible
   }, []);
-  /** Choose a member: from the back or with the vinyl out, put it away and return to the front first. */
+  /** Choose a member: from the back, return to the front first. The vinyl stays where it is. */
   const choose = useCallback((id, toggle = true) => {
     if (Date.now() - flickedAt.current < 300) return; // the pointer-up that ended a flick is not a tap
     setFace('front');
-    setOut(false);
     setPinned((p) => {
       if (toggle && p === id) {
         setHovered(null); // a repeat selection dismisses the preview too
@@ -197,22 +232,38 @@ function CoverRoute() {
   // Hover previews come from a mouse only: a tap also fires enter/move events, which would leave the
   // tapped member previewed after a phone user dismissed it.
   const preview = (id, pointerType = 'mouse') => {
-    if (performing && pointerType === 'mouse' && (TURN.mode === 'idle' || TURN.mode === 'pending')) setHovered(id);
+    if (hoverable && pointerType === 'mouse' && (TURN.mode === 'idle' || TURN.mode === 'pending')) setHovered(id);
   };
   // Turning keeps the vinyl where it is: extraction survives a turn.
   const turnOver = () => setFace((v) => (v === 'front' ? 'back' : 'front'));
-  const toggleRecord = () => {
-    setFace('front');
-    setOut((v) => !v);
+  /** The vinyl's action: put an extracted disc away from either face (or retry blocked sound on it);
+   *  extraction starts from the front. */
+  const vinylAction = (retry = false) => {
+    if (out && retry && sound.state === 'blocked') transport.current?.unlock();
+    else if (out) setRecordOut(false);
+    else {
+      setFace('front');
+      setRecordOut(true);
+    }
+  };
+  // A click on the front that is not a member: with the vinyl out it goes back in.
+  const onBlank = () => {
+    if (Date.now() - flickedAt.current < 300) return;
+    if (out) setRecordOut(false);
   };
 
   // Escape dismisses inside the route only (the stage and panel), never as a global window handler.
   const onKeyDown = (e) => {
     settle();
     if (e.key === 'Escape') dismiss();
-    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && e.target === stage.current) {
+    if (e.target !== stage.current) return; // a focused control handles its own keys
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       e.preventDefault();
       turnOver();
+    }
+    if ((e.key === ' ' || e.key === 'Enter') && (out || face === 'front')) {
+      e.preventDefault();
+      vinylAction();
     }
   };
 
@@ -221,8 +272,11 @@ function CoverRoute() {
   const onPointerDown = (e) => {
     stage.current?.focus({ preventScroll: true }); // so Escape after a canvas selection reaches the route
     // off the record, a second finger, or not the primary button (a context menu can swallow its pointerup)
-    if (!e.target.dataset?.hit || TURN.id !== -1 || e.button !== 0) return;
-    press(e, face);
+    const zone = e.target.dataset?.hit;
+    if (!zone || TURN.id !== -1 || e.button !== 0) return;
+    // a mouse pull ends on pointerup, which is not a user activation: unlock on the press (silent while in)
+    if (zone === 'vinyl') transport.current?.unlock();
+    press(e, face, zone);
     e.target.setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e) => {
@@ -232,10 +286,16 @@ function CoverRoute() {
     if (move(e) && was === 'pending') setHovered(null); // the drag parks any hover preview
   };
   const endTurn = (e, cancel) => {
-    const to = release(e, cancel, reduced);
-    if (!to) return;
+    const r = release(e, cancel, reduced);
+    if (!r) return;
+    if ('tap' in r) {
+      if (r.tap === 'vinyl') vinylAction(true);
+      else if (r.tap === 'sleeve' && out && face === 'back') setRecordOut(false); // the front's own click decides there
+      return;
+    }
     flickedAt.current = Date.now();
-    setFace(to);
+    if ('out' in r) setRecordOut(r.out);
+    else setFace(r.face);
   };
 
   return (
@@ -271,9 +331,11 @@ function CoverRoute() {
                 out={out}
                 reduced={reduced}
                 active={active}
+                hoverable={hoverable}
                 spread={spread}
                 onHover={preview}
                 onSelect={choose}
+                onBlank={onBlank}
               />
               <Ready onReady={onReady} />
             </Suspense>
@@ -283,6 +345,12 @@ function CoverRoute() {
         </SceneBoundary>
         <svg className="eao__hit" aria-hidden="true">
           <polygon ref={bindHull} data-hit="sleeve" />
+          <polygon
+            ref={bindVinyl}
+            data-hit="vinyl"
+            onPointerEnter={(e) => (TURN.peek = e.pointerType === 'mouse')}
+            onPointerLeave={() => (TURN.peek = false)}
+          />
         </svg>
         <hgroup className="eao__title">
           <h1>Everything at Once</h1>
@@ -318,11 +386,19 @@ function CoverRoute() {
             'Hover a side of the star, or pick a member.'
           )}
         </p>
+        <p className="eao__status" aria-live="polite">
+          {STATUS[sound.state](sound.song)}
+          {sound.state === 'blocked' && (
+            <button type="button" onClick={() => transport.current?.unlock()}>
+              Try the sound again
+            </button>
+          )}
+        </p>
         <div className="eao__controls">
           <button type="button" onClick={turnOver}>
             {face === 'front' ? 'Turn the record over' : 'Show the front'}
           </button>
-          <button type="button" aria-expanded={out} onClick={toggleRecord}>
+          <button type="button" aria-expanded={out} onClick={() => vinylAction()}>
             {out ? 'Put the record away' : 'Slide the record out'}
           </button>
           {pinned && (
