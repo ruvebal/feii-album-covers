@@ -37,7 +37,8 @@ Pins: three@0.185.1, @react-three/fiber@9.8.2, @react-three/drei@10.7.9, react@1
 | same, Guille selected (ghost, plate, guitar in two passes, 6 instanced strings) | same | off | 20 | 24,659 | 19 | 17 | yes |
 | same, Javi's controller loaded too, rest | same | off | 16 | 343 | 16 | 17 | yes |
 | same, Javi selected (ghost, plate, controller body + 9 pressable parts in two passes) | same | off | 33 | 14,733 | 27 | 18 | yes |
-| cover + style treatment (task2) | ... | off | ... | ... | ... | ... | ... |
+| cover + style treatment (task2): the star infinity mirror (card material; + `star-sdf.ktx2`, RG8 512², 524,288 GPU bytes, 60 KB file), all heroes loaded, rest | same | off | 16 | 343 | 16 | 18 | yes |
+| same, mirror, Javi selected | same | off | 33 | 14,733 | 27 | 19 | yes |
 | cover + KTX2 textures (task3) | ... | off | ... | ... | ... | ... | ... |
 
 The 6 Nov readings come from software rendering; from 7 Nov the headless checks run on the laptop's GPU. Counts (calls, triangles, geometries) do not depend on the GPU; frame time does. Frame time, `?debug=fps`, idle at 775×775, 7 Nov: RTX 2060 Mobile 133.1 FPS (p95 9.7 ms); Intel UHD (CML GT2) 111.3 FPS (p95 10.4 ms) after the layer blur and tear became uniform branches (11.9 FPS before).

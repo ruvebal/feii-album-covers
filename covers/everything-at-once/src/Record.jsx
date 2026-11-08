@@ -14,7 +14,9 @@ import * as THREE from 'three/webgpu';
 import { MathUtils, Vector3 } from 'three/webgpu';
 import { color, float, length, mix, sin, uv, vec3 } from 'three/tsl';
 import { useKTX2Texture } from '../../../src/lib/ktx2.js';
-import { faceMaterial, useReleaseOnUnmount } from './materials.js';
+import { faceMaterial, MIRROR, mirrorMaterial, useReleaseOnUnmount } from './materials.js';
+import LAYERS from './layers.json';
+import { MEMBERS } from './members.js';
 import Diorama, { FRONT_Z, PULL_BACK, VIEW_DISTANCE } from './Diorama.jsx';
 import { coastStep, FACES, TURN } from './turn.js';
 
@@ -22,6 +24,9 @@ const BACK_URL = new URL('../public/back.ktx2', import.meta.url).href;
 const LABEL_URL = new URL('../public/label.ktx2', import.meta.url).href;
 const SPINE_URL = new URL('../public/spine.ktx2', import.meta.url).href;
 const FILL_URL = new URL('../public/star-fill.ktx2', import.meta.url).href;
+const SDF_URL = new URL('../public/star-sdf.ktx2', import.meta.url).href;
+const CARD_Z = FRONT_Z - 0.0005; // the card (the star's floor) sits just under the layers
+const REST = 0; // the mirror's intensity at rest: head-on there is no mirror, only Karu's cover
 const THICK = FRONT_Z * 2;
 const TILT = 0.07; // radians at the stage's edge
 const DISC = 0.96; // vinyl radius (the sleeve is 2 x 2)
@@ -110,17 +115,18 @@ export default function Record({ face, out, reduced, active, hoverable, spread, 
   const label = useKTX2Texture(LABEL_URL);
   const spine = useKTX2Texture(SPINE_URL);
   const fill = useKTX2Texture(FILL_URL);
+  const sdf = useKTX2Texture(SDF_URL); // data: NoColorSpace and clamped from the loader
   const mats = useMemo(
     () => ({
       back: faceMaterial(back),
       label: faceMaterial(label, { transparent: true }),
       spine: faceMaterial(spine),
-      card: faceMaterial(fill, {}, true), // the cover's own star yellow (grain included), receding with a selection
+      card: mirrorMaterial(fill, sdf, LAYERS.mirror), // the cover's star yellow + the infinity mirror
     }),
-    [back, label, spine, fill],
+    [back, label, spine, fill, sdf],
   );
   const vinyl = useVinylMaterial();
-  useReleaseOnUnmount([BACK_URL, LABEL_URL, SPINE_URL, FILL_URL], [back, label, spine, fill]);
+  useReleaseOnUnmount([BACK_URL, LABEL_URL, SPINE_URL, FILL_URL, SDF_URL], [back, label, spine, fill, sdf]);
   useEffect(
     () => () => {
       Object.values(mats).forEach((m) => m.dispose());
@@ -142,6 +148,7 @@ export default function Record({ face, out, reduced, active, hoverable, spread, 
     const still = TURN.mode === 'idle' || TURN.mode === 'pending';
     // No hover tilt while handled, nor while a side is selected: the record holds still under its hero (user, 7 Nov).
     const sway = still && !active && !reduced;
+    const rx0 = st.rx, ry0 = st.ry;
     st.rx = approach(st.rx, sway ? -pointer.y * TILT : 0, k, rate);
     st.ry = approach(st.ry, sway ? pointer.x * TILT : 0, k, rate);
     // Turning: the drag (or its coast) moves the target; otherwise it is the upright face. The shown
@@ -168,6 +175,16 @@ export default function Record({ face, out, reduced, active, hoverable, spread, 
     flip.current.quaternion.copy(TURN.q);
     disc.current.position.x = st.out * TRAVEL;
     if (!reduced && out && st.out > 0.3) spin.current.rotation.z -= SPIN * dt; // it plays only once out
+    // The mirror deepens while the record moves: turned away from upright (either face: the settled back is
+    // rest too), arriving in the opening, or tilting as the pointer moves. A tilt held towards a resting pointer
+    // is rest: back to 0.
+    const tiltSpeed = Math.hypot(st.rx - rx0, st.ry - ry0) / Math.max(dt, 1e-3); // rad/s
+    const motion = Math.min(1, Math.max(near / 20, e, tiltSpeed / 0.15));
+    MIRROR.amount.value = reduced ? REST : approach(MIRROR.amount.value, REST + (1 - REST) * motion, dt, 5);
+    const tint = MEMBERS.find((mb) => mb.id === active)?.tint;
+    if (tint) MIRROR.tint.value.set(tint);
+    MIRROR.tintMix.value = approach(MIRROR.tintMix.value, tint ? 1 : 0, k, rate);
+    if (!reduced) MIRROR.shimmer.value = (MIRROR.shimmer.value + dt * 1.6) % (Math.PI * 2); // the lights' shimmer runs
     // Pull back with the vinyl, so sleeve + disc fit the square stage (a peek or a sliver makes a little room
     // too: at rest the sleeve fills the stage), centred towards the side the disc comes out of: the sleeve's
     // x axis faces the other way on the back.
@@ -178,6 +195,7 @@ export default function Record({ face, out, reduced, active, hoverable, spread, 
     flip.current.updateWorldMatrix(true, false);
     camera.updateMatrixWorld();
     const m = flip.current.matrixWorld;
+    flip.current.worldToLocal(MIRROR.cam.value.copy(camera.position)).z -= CARD_Z; // into the card's space
     if (TURN.hull) {
       for (let i = 0; i < 8; i++) P[i].copy(CORNERS[i]).applyMatrix4(m).project(camera);
       writeHull(size);
@@ -210,7 +228,7 @@ export default function Record({ face, out, reduced, active, hoverable, spread, 
           hoverable={hoverable}
           selectable={face === 'front'}
         />
-        <mesh position={[0, 0, FRONT_Z - 0.0005]} material={mats.card}>
+        <mesh name="eao-mirror" userData={{ sdf }} position={[0, 0, CARD_Z]} material={mats.card}>
           <planeGeometry args={[2, 2]} />
         </mesh>
         <mesh position={[0, 0, -FRONT_Z]} rotation={[0, Math.PI, 0]} material={mats.back}>

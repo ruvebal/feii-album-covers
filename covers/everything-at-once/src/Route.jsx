@@ -13,6 +13,7 @@ import { createTransport } from './audio.js';
 import { AUDIO } from './heroes.js';
 import { MEMBERS, TRACKS } from './members.js';
 import Record from './Record.jsx';
+import { MIRROR } from './materials.js';
 import { FOV, FRONT_Z, VIEW_DISTANCE } from './Diorama.jsx';
 import RouteBudgetProbe from './RouteBudgetProbe.jsx';
 import { move, press, release, resetTurn, TURN } from './turn.js';
@@ -195,9 +196,11 @@ function CoverRoute() {
     if (!debug) return;
     window.__eaoTurn = TURN; // scripts/route-check.mjs reads the gesture state
     window.__eaoAudio = transport; // ... and which songs are sounding
+    window.__eaoMirror = MIRROR; // ... and the mirror's uniforms
     return () => {
       delete window.__eaoTurn;
       delete window.__eaoAudio;
+      delete window.__eaoMirror;
     };
   }, [debug]);
   useEffect(() => {

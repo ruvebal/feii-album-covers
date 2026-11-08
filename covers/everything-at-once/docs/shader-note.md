@@ -1,12 +1,11 @@
 # Shader note
 
-<!-- Template (Unit 9, line 7 from Cover shaders). Eight to twelve lines.
-     Replace every ellipsis. Describe the shader you actually ship. -->
+The star's infinity mirror: `mirrorMaterial` in `src/materials.js` (TSL), the material of the card plane under the layers.
 
-1. Vertex vs fragment: ...
-2. Uniform: ... and why it is not a constant in the shader.
-3. Coordinate space: view / uv / gl_FragCoord. Which one, and what would slide if you picked the other.
-4. Precision: mediump, or why this shader needs highp.
-5. Effect: the one thing a viewer should notice. Name the function (fresnel, band, dissolve).
-6. Post-pass: zero. Or one pass, the pin, and the per-frame renderer.info row with and without it.
-7. Sampler: uMap is ... (what the picture shows, and its source or licence). It is looked up at vUv, the sleeve's own UV, so the picture stays printed when the camera orbits. My effect ... (moves the place / changes the answer) in the line ...
+1. Vertex vs fragment: all the work is in the fragment stage; the vertex stage only places the 2 × 2 card plane.
+2. Uniforms: `MIRROR.amount` (0 at rest: head-on the star is Karu's cover; up to 1 while the record turns, tilts or opens), `MIRROR.shimmer` (the lights' phase), `MIRROR.cam` (the camera in the card's own space, written every frame) and `MIRROR.tint`/`tintMix` (the active member). They change every frame, so they cannot be constants.
+3. Coordinate space: the card's local position for the rays (camera → fragment, continued to depth 0.04k + 0.012k², about the star's own centre; the first echoes shrink without sliding, the deeper ones swing with the turn) and its uv for the yellow. In view space the echoes would stay put while the sleeve turns; in local space they slide and shrink with perspective, like the reflections in a mirror box.
+4. Precision: highp (32-bit floats on WebGPU, three's default on WebGL 2): the rays divide by the camera's depth, a small denominator at grazing angles.
+5. Effect: eight star outlines receding inside the star while the record moves, each repeating Karu's drawn star (the opening her drawing leaves, starting under her ink) and lined with soft lights (white core, pink halo, screened) whose shimmer runs around and down the tunnel. Each is a signed-distance band (`smoothstep` on |d|, antialiased with `fwidth`), 0.7 fainter than the one before, printed as two riso inks multiplied onto the yellow: purple (or a shade of the active member's colour) over a slightly misregistered magenta.
+6. Post-pass: zero. The mirror replaces the card's material, so the draw calls stay the same (16 at rest; `renderer-info.md`, task2 row).
+7. Samplers: `star-fill.ktx2` is the star's yellow with its print grain, cut from Karu's cover. It is looked up at vUv, the sleeve's own UV, so the print stays on the sleeve as it turns. `star-sdf.ktx2` is the star's signed distance (RG8 data: her outline's distance and its lights'; linear, NoColorSpace). My effect moves the place it is looked up: one ray per echo, `q = p + (p − cam) · z / cam.z`.

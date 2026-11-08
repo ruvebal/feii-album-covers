@@ -4,7 +4,10 @@ import { useEffect } from 'react';
 import { useLoader } from '@react-three/fiber';
 import * as THREE from 'three/webgpu';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
-import { color, float, Fn, If, mx_fractal_noise_float, texture, uniform, uv, vec2, vec3, vec4, max, mix, smoothstep, step } from 'three/tsl';
+import {
+  atan, color, float, Fn, fwidth, If, Loop, mx_fractal_noise_float, positionLocal, pow, sin, texture, uniform, uv, vec2, vec3, vec4,
+  max, mix, smoothstep, step,
+} from 'three/tsl';
 
 /**
  * How far the backdrop (the star's yellow and its lettering) recedes while a member is selected, 0..1.
@@ -98,11 +101,109 @@ export function layerMaterial(map, u, seed = 0, backdrop = false, plate = null, 
   return m;
 }
 
-/** A plain textured face (sleeve back, disc label); `backdrop` makes it recede with RECEDE (the star's card). */
-export function faceMaterial(map, opts = {}, backdrop = false) {
+/** A plain textured face (sleeve back, disc label, spine). */
+export function faceMaterial(map, opts = {}) {
   const m = new THREE.MeshBasicNodeMaterial(opts);
   const t = texture(map, uv());
-  m.colorNode = backdrop ? vec4(recede(t.rgb, RECEDE), t.a) : t;
+  m.colorNode = t;
+  return m;
+}
+
+/**
+ * The star's infinity mirror (task2's authored shader; shader-note.md). Driven by Record.jsx every frame:
+ * - `amount` 0..1: 0 at rest (head-on the star is Karu's cover, no mirror: user, 8 Nov), up to 1 while it moves.
+ * - `cam`: the camera in the card plane's own space (the plane spans -1..1, z = 0).
+ * - `tint` / `tintMix`: the echoes take the active member's colour instead of the purple ink.
+ */
+export const MIRROR = {
+  amount: uniform(0),
+  cam: uniform(new THREE.Vector3(0, 0, 3)),
+  tint: uniform(new THREE.Color('#3a1457')),
+  tintMix: uniform(0),
+  shimmer: uniform(0), // the lights' travelling shimmer phase, 0..2pi (held still under reduced motion)
+};
+const ECHOES = 8; // N reflections
+// Depth of echo k: 0.04 k + 0.012 k^2 (sleeve units; the camera sits ~2.8 away). Dense near the rim, so a turn never
+// slides the first echo far off Karu's edge (a strip of plain yellow at the tip, user 8 Nov); ~1.1 deep at k = 8.
+const DEPTH = (k) => k.mul(0.04).add(k.mul(k).mul(0.012));
+const FALL = 0.7; // r: each echo is this much fainter than the one before
+const LINE = 0.9; // half the echo's ink width, in SDF texels
+const LIGHT = 1.4; // a light's bright core radius, in SDF texels (its halo reaches the field's `dot` range)
+
+/**
+ * The card under the layers: the cover's star yellow (`fill`) with receding star-outline echoes, as if the star
+ * were a window into a mirror box. Echo k casts the camera -> fragment ray down to DEPTH(k) and reads the
+ * star's signed distance there, so the echoes shrink with perspective and slide sideways as the sleeve tilts.
+ * Only the outline repeats (never the artwork), printed in riso inks: purple over a slightly misregistered
+ * magenta, multiplied onto the yellow; the fill darkens a little with each echo it lies inside. A string of
+ * lights just inside the outline repeats in every echo too, like the LEDs of a real infinity mirror: a white core
+ * and a soft pink halo, screened over the print, with a shimmer that runs around the star and down the tunnel.
+ * One pass, no
+ * extra draw call; every texture read is in uniform control flow (WGSL's derivative rules).
+ * @param {THREE.Texture} fill the star yellow with its grain (sRGB)
+ * Every echo repeats Karu's drawn star (the opening her drawing leaves, pushed under her ink), with its lights.
+ * @param {THREE.Texture} sdf RG8: R signed distance to her star (+ inside, +-`range` texels at 255 / 0, 128 = the
+ *   outline); G distance to the nearest light, 0..`dot`
+ * @param {{ size: number, range: number, dot: number, centre: number[] }} spec layers.json `mirror`
+ */
+export function mirrorMaterial(fill, sdf, { size, range, dot, centre }) {
+  // KTX2Loader makes uncompressed data a nearest-filtered DataTexture: the echoes need the distance interpolated.
+  sdf.minFilter = sdf.magFilter = THREE.LinearFilter;
+  sdf.needsUpdate = true;
+  const m = new THREE.MeshBasicNodeMaterial();
+  const field = (q) => texture(sdf, q);
+  const signed = (v) => v.mul(255).sub(128).mul(range / 127); // texels, + inside
+  const dist = (q) => signed(field(q).r);
+  m.colorNode = Fn(() => {
+    const a = MIRROR.amount;
+    const p = positionLocal.xy;
+    const cz = max(MIRROR.cam.z, 0.05); // grazing guard: the card faces away long before this
+    // The box's axis runs through the star's centre, not the sleeve's: head-on, the echoes shrink straight into
+    // the star (the camera sits on the sleeve's axis; off it they read as tilted). Tilting still slides them.
+    const axis = p.sub(vec2(centre[0] * 2 - 1, centre[1] * 2 - 1));
+    const px = max(fwidth(uv().x), fwidth(uv().y)).mul(size); // SDF texels per screen pixel, on the card
+    const inStar = smoothstep(-1, 0.5, dist(uv())); // echoes only inside the star
+    const ink = mix(color('#3a1457'), MIRROR.tint.mul(0.55), MIRROR.tintMix); // a shade of it: Lucy's gold vanished on yellow
+    const reg = vec2(0.9, -0.6).mul(a.add(0.5).div(size)); // the magenta plate's misregistration, in uv
+    const purple = float(1).toVar();
+    const magenta = float(1).toVar();
+    const deep = float(0).toVar();
+    const glow = float(0).toVar();
+    const core = float(0).toVar();
+    Loop(ECHOES, ({ i }) => {
+      const k = float(i).add(1);
+      const t = DEPTH(k).div(cz);
+      // The shallow echoes shrink but don't slide: if every echo slid with the turn, the side they left showed plain
+      // yellow (under the controller, beside the lenses: user, 8 Nov). Only the deep ones swing, so lines always
+      // come out from under Karu's drawing and the tunnel bends as the record moves.
+      const swing = smoothstep(1.5, 6, k);
+      const q = p.add(axis.sub(MIRROR.cam.xy.mul(swing)).mul(t)).mul(0.5).add(0.5);
+      const onCard = step(0, q.x).mul(step(q.x, 1)).mul(step(0, q.y)).mul(step(q.y, 1)).mul(inStar);
+      const aa = px.mul(t.add(1)); // an echo's texels per pixel grow with its depth
+      const weight = pow(float(FALL), k.sub(1)).mul(onCard).mul(a);
+      const line = (d) => smoothstep(LINE, aa.add(LINE), d.abs()).oneMinus();
+      const f = field(q);
+      const d = signed(f.r);
+      // Lights: the shimmer travels around the star and inwards, down the tunnel.
+      const around = atan(q.y.sub(centre[1]), q.x.sub(centre[0]));
+      const twinkle = sin(around.mul(5).add(MIRROR.shimmer).sub(k.mul(0.8))).mul(0.4).add(0.6);
+      const lit = pow(float(FALL), k.sub(1)).mul(onCard).mul(twinkle);
+      const ld = f.g.mul(dot);
+      core.addAssign(smoothstep(LIGHT, aa.add(LIGHT), ld).oneMinus().mul(lit));
+      glow.addAssign(ld.div(dot).oneMinus().clamp(0, 1).pow(2).mul(lit));
+      purple.mulAssign(float(1).sub(line(d).mul(weight)));
+      magenta.mulAssign(float(1).sub(line(dist(q.add(reg))).mul(weight).mul(0.7)));
+      deep.addAssign(smoothstep(-0.5, 0.5, d).mul(onCard));
+    });
+    const printed = texture(fill, uv())
+      .rgb.mul(mix(vec3(1), color('#e2477e'), magenta.oneMinus()))
+      .mul(mix(vec3(1), ink, purple.oneMinus()))
+      .mul(float(1).sub(deep.mul(a.mul(a)).mul(0.03))); // squared: at rest the yellow stays the card's own
+    // Screen the lights over the print: they brighten, never darken; their strength follows the mirror's.
+    const light = color('#ff9fd0').mul(glow.mul(0.65)).add(vec3(core)).mul(a).min(1);
+    const lights = vec3(1).sub(vec3(1).sub(printed).mul(vec3(1).sub(light)));
+    return vec4(recede(lights, RECEDE), 1);
+  })();
   return m;
 }
 
