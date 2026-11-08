@@ -6,7 +6,9 @@
 // ghost) or the vinyl out; triangles 345, geometries 17, textures 12 (docs/renderer-info.md).
 // 7 Nov night, Andrés's metronome hero: rest calls 16, triangles 343, geometries 16, textures 13; Andrés
 // selected (ghost + the hero's meshes) calls 21, triangles 4793, geometries 19, textures 14.
-// Re-measure as each of the other four heroes lands.
+// 8 Nov, Pavlo's cigarettes (3 sticks + instanced smoke + instanced ember glows, plate and hero textures resident): rest calls 16,
+// triangles 343, geometries 16, textures 14; Pavlo selected calls 25, triangles 1527, geometries 21, textures 15.
+// Re-measure as each of the other three heroes lands.
 
 /** @type {import('../../../src/lib/types.js').Ceiling | null} */
-export const CEILING = { calls: 22, triangles: 5000, geometries: 20, textures: 14 };
+export const CEILING = { calls: 25, triangles: 5000, geometries: 21, textures: 15 };
