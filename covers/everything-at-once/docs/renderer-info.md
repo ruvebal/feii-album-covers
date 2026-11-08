@@ -35,6 +35,8 @@ Pins: three@0.185.1, @react-three/fiber@9.8.2, @react-three/drei@10.7.9, react@1
 | same, Lucy selected (ghost, plate, frame, lenses, two arms) | same | off | 25 | 11,589 | 21 | 16 | yes |
 | same, Guille's guitar loaded too, rest | same | off | 16 | 343 | 16 | 16 | yes |
 | same, Guille selected (ghost, plate, guitar in two passes, 6 instanced strings) | same | off | 20 | 24,659 | 19 | 17 | yes |
+| same, Javi's controller loaded too, rest | same | off | 16 | 343 | 16 | 17 | yes |
+| same, Javi selected (ghost, plate, controller body + 9 pressable parts in two passes) | same | off | 33 | 14,733 | 27 | 18 | yes |
 | cover + style treatment (task2) | ... | off | ... | ... | ... | ... | ... |
 | cover + KTX2 textures (task3) | ... | off | ... | ... | ... | ... | ... |
 

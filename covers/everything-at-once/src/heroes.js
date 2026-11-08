@@ -60,6 +60,18 @@ export const HEROES = {
 
     fit: { rot: 0, scale: 0.93906, shift: [-0.02, 0] },
   },
+  javi: {
+    glb: new URL('../public/hero-javi.glb', import.meta.url).href,
+    tex: new URL('../public/hero-javi.ktx2', import.meta.url).href,
+    // Pivot empties carrying their press direction and depth (extras, scripts/controller_rig.py): with a song
+    // playing one presses per beat, in this order; the D-pad tips towards an arm instead. The stick circles.
+    press: ['A_low-pivot', 'B_low-pivot', 'direction_low-pivot', 'C1-pivot', 'C2-pivot', 'C3-pivot', 'C4-pivot', 'start_low-pivot'],
+    dpad: 'direction_low-pivot',
+    stick: 'joystick_low-pivot',
+    // Fitted on four landmarks (D-pad, Start, the two round buttons above it; 2.3 px rms on the 1024 cover), not the
+    // silhouette: the fingers hide the drawn controller's right half, so an IoU fit dragged it 70 px off.
+    fit: { rot: -0.00661, scale: 0.94819, shift: [-0.03886, -0.03258] },
+  },
 };
 const each = (f) => Object.fromEntries(Object.keys(HEROES).map((n) => [n, f()]));
 

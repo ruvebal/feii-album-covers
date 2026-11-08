@@ -13,7 +13,9 @@
 // 8 Nov, Guille's guitar (one joined mesh of ~12k triangles, drawn in two passes as a transparent double-sided
 // material, plus 6 instanced strings; plate and hero textures resident): rest calls 16, triangles 343,
 // geometries 16, textures 16; Guille selected calls 20, triangles 24659, geometries 19, textures 17.
-// Re-measure when Javi's controller lands.
+// 8 Nov, Javi's controller (body + 9 pressable parts, each its own draw in two passes as a transparent
+// double-sided material; plate and hero textures resident): rest calls 16, triangles 343, geometries 16,
+// textures 17; Javi selected calls 33, triangles 14733, geometries 27, textures 18.
 
 /** @type {import('../../../src/lib/types.js').Ceiling | null} */
-export const CEILING = { calls: 25, triangles: 25000, geometries: 21, textures: 17 };
+export const CEILING = { calls: 33, triangles: 25000, geometries: 27, textures: 18 };

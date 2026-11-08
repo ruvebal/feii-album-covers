@@ -21,6 +21,7 @@ import {
   smoothstep,
   texture,
   time,
+  uniform,
   uv,
   vec2,
   vec3,
@@ -60,6 +61,9 @@ const PUFFS = 8; // smoke puffs per ember, one instanced draw for all of them
 const SMOKE_LIFE = 2.6; // s from the ember until a puff has faded
 const STRING_W = 0.045; // model units across a string (the guitar's body is ~5.5 wide)
 const STRING_AMP = 0.06; // model units: the widest swing of a string's middle at a full strum
+const DPAD_TIP = 0.04; // rad: within the arm tip's clearance (pushing the D-pad bit it into the shell)
+const STICK = 0.35; // rad: the stick's tilt as it circles
+const PRESS_DARK = 0.3; // a held button darkens: its safe travel (~0.004) barely shows from above
 
 /** An image-space similarity for the head-on camera, as a sleeve-space matrix: rotation and scale about the
  *  optical axis, shift (ndc) as a shear along the view, so every depth moves by the same amount on screen. */
@@ -102,8 +106,9 @@ function puffs({ mesh, alpha, n, points }, embers, time, level, glow) {
 }
 
 /** The hero's unlit material: the painted texture with the riso shift, fading with `show`. `glow` lights the
- *  ember texels (the cigarettes); `glint` = [lo, size] of the mesh's local box adds the sweeping highlight. */
-function heroMaterial(map, shift, show, glow, glint) {
+ *  ember texels (the cigarettes); `glint` = [lo, size] of the mesh's local box adds the sweeping highlight;
+ *  `pressed` darkens each mesh by its own userData.pressed (0..1, the controller's buttons). */
+function heroMaterial(map, shift, show, glow, glint, pressed = false) {
   const d = vec2(shift, shift.mul(0.6));
   const r = texture(map, uv().add(d));
   const g = texture(map, uv());
@@ -130,6 +135,11 @@ function heroMaterial(map, shift, show, glow, glint) {
     const diag = q.x.add(q.y).add(q.z).div(3);
     rgb = rgb.add(vec3(1, 0.95, 1).mul(smoothstep(0.07, 0, diag.sub(SWEEP).abs()).mul(0.85)));
   }
+  if (pressed) {
+    // one material for every part; the value is read per drawn object
+    const k = uniform(0).onObjectUpdate(({ object }) => object.userData.pressed ?? 0);
+    rgb = rgb.mul(float(1).sub(k.mul(PRESS_DARK)));
+  }
   m.colorNode = vec4(rgb, show); // never clipped: the whole hero shows, however far the record is
   return m;
 }
@@ -146,8 +156,8 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
   const show = SHOW[name];
   const glow = GLOW[name];
   const mat = useMemo(
-    () => heroMaterial(map, shift, show, spec.ember ? glow : null),
-    [map, shift, show, glow, spec.ember],
+    () => heroMaterial(map, shift, show, spec.ember ? glow : null, null, !!spec.press),
+    [map, shift, show, glow, spec.ember, spec.press],
   );
 
   // Smoke: soft puffs leave each ember, drift up the page and off it towards the viewer, grow and fade.
@@ -293,7 +303,24 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
         o: scene.getObjectByName(n),
         tip: new Vector3(0, y, 0),
       })),
+      // buttons: pivot empty, its press direction (parent space) and depth, the mesh that darkens
+      presses: (spec.press ?? []).map((n) => {
+        const o = scene.getObjectByName(n);
+        if (!o?.userData.depth) throw new Error(`Hero: no press data on ${n} in ${name}'s GLB`);
+        return {
+          o,
+          dpad: n === spec.dpad,
+          rest: o.position.clone(),
+          restQ: o.quaternion.clone(),
+          dir: new Vector3(...o.userData.press),
+          depth: o.userData.depth,
+          mesh: o.children.find((c) => c.isMesh),
+        };
+      }),
+      stick: spec.stick ? scene.getObjectByName(spec.stick) : null,
     };
+    if (spec.stick && !rig.current.stick) throw new Error(`Hero: no ${spec.stick} in ${name}'s GLB`);
+    const stickRest = rig.current.stick?.quaternion.clone();
     if (DEBUG)
       (DEBUG.__eaoHeroRigs ??= {})[name] = {
         scene,
@@ -308,8 +335,14 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
       if (swing) swing.quaternion.copy(rig.current.swingRest); // the cached scene stays at rest
       for (const b of rig.current.bob) b.o.position.y = b.y;
       for (const f of rig.current.fold) f.o.quaternion.copy(f.rest);
+      for (const p of rig.current.presses) {
+        p.o.position.copy(p.rest);
+        p.o.quaternion.copy(p.restQ);
+        if (p.mesh) p.mesh.userData.pressed = 0;
+      }
+      rig.current.stick?.quaternion.copy(stickRest);
     };
-  }, [scene, rest, viewDistance, frontZ, spec.swing, spec.bob, spec.place, spec.ember, spec.fold, spec.anchor, name]);
+  }, [scene, rest, viewDistance, frontZ, spec.swing, spec.bob, spec.place, spec.ember, spec.fold, spec.anchor, spec.press, spec.dpad, spec.stick, name]);
 
   const group = useRef();
   useEffect(() => {
@@ -389,6 +422,26 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
     if (smoke) puffs(smoke, R.embers, s.time, reduced ? 0 : perf, GLOW[name].value);
     // The strings ring on every beat and die down until the next, only with a song playing; silent they rest.
     if (strings) STRUM.value = AUDIO.playing && !reduced ? perf * (1 - phase) ** 2 : 0;
+    // The controller: with a song playing one button per beat snaps down, holds and lets go (the D-pad tips
+    // towards a different arm each round); the stick circles once every two beats.
+    if (R.presses.length) {
+      const hit = AUDIO.playing && !reduced ? Math.floor(s.beat) % R.presses.length : -1;
+      const env = phase < 0.12 ? phase / 0.12 : phase < 0.45 ? 1 : Math.max(0, 1 - (phase - 0.45) / 0.3);
+      R.presses.forEach((p, i) => {
+        const k = i === hit ? env * perf : 0;
+        if (p.dpad) {
+          const arm = Math.floor(s.beat / R.presses.length) % 4;
+          const a = DPAD_TIP * k * (arm < 2 ? 1 : -1);
+          p.o.quaternion.copy(p.restQ).multiply(tmpQ.setFromAxisAngle(arm % 2 ? Y_AXIS : X_AXIS, a));
+        } else p.o.position.copy(p.rest).addScaledVector(p.dir, k * p.depth);
+        if (p.mesh) p.mesh.userData.pressed = k;
+      });
+    }
+    if (R.stick) {
+      // the controller's up is the pivot's local z after export, so it tilts about x and y (z only spins it)
+      const a = s.beat * Math.PI;
+      R.stick.rotation.set(Math.sin(a) * STICK * perf, Math.cos(a) * STICK * perf, 0);
+    }
     // Rise towards the viewer along the camera ray through its centre: it stays where the drawing has it and
     // just comes closer. No turn (user, 7 Nov).
     const e = lift * lift * (3 - 2 * lift);
