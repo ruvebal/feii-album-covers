@@ -31,6 +31,8 @@ Pins: three@0.185.1, @react-three/fiber@9.8.2, @react-three/drei@10.7.9, react@1
 | Record with Andrés's metronome and Pavlo's cigarettes loaded, rest | Headless Chromium 155.0.8059.84, WebGL 2 backend on ANGLE/Vulkan, RTX 2060 Mobile, 8 Nov 2026 | off | 16 | 343 | 16 | 14 | yes |
 | same, Andrés selected (ghost, plate, metronome body + pendulum) | same | off | 21 | 4,793 | 19 | 15 | yes |
 | same, Pavlo selected (ghost, plate, 3 cigarettes, instanced smoke and ember glows) | same | off | 25 | 1,527 | 21 | 15 | yes |
+| same, Lucy's sunglasses loaded too, rest | same | off | 16 | 343 | 16 | 15 | yes |
+| same, Lucy selected (ghost, plate, frame, lenses, two arms) | same | off | 25 | 11,589 | 21 | 16 | yes |
 | cover + style treatment (task2) | ... | off | ... | ... | ... | ... | ... |
 | cover + KTX2 textures (task3) | ... | off | ... | ... | ... | ... | ... |
 

@@ -8,7 +8,9 @@
 // selected (ghost + the hero's meshes) calls 21, triangles 4793, geometries 19, textures 14.
 // 8 Nov, Pavlo's cigarettes (3 sticks + instanced smoke + instanced ember glows, plate and hero textures resident): rest calls 16,
 // triangles 343, geometries 16, textures 14; Pavlo selected calls 25, triangles 1527, geometries 21, textures 15.
-// Re-measure as each of the other three heroes lands.
+// 8 Nov, Lucy's sunglasses (frame, lenses, two arms; plate and hero textures resident): rest calls 16,
+// triangles 343, geometries 16, textures 15; Lucy selected calls 25, triangles 11589, geometries 21, textures 16.
+// Re-measure as each of the other two heroes lands.
 
 /** @type {import('../../../src/lib/types.js').Ceiling | null} */
-export const CEILING = { calls: 25, triangles: 5000, geometries: 21, textures: 15 };
+export const CEILING = { calls: 25, triangles: 12000, geometries: 21, textures: 16 };

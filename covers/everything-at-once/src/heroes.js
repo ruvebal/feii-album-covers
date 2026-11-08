@@ -14,6 +14,15 @@ export const HEROES = {
     // from scripts/hero_fit.py (IoU 0.798 -> 0.888). Applied at the handoff, relaxed as the hero rises.
     fit: { rot: 0.036, scale: 0.98969, shift: [-0.05938, 0.00813] },
   },
+  lucy: {
+    glb: new URL('../public/hero-lucy.glb', import.meta.url).href,
+    tex: new URL('../public/hero-lucy.ktx2', import.meta.url).href,
+    fold: { Arm_upper: 1, Arm_lower: -1 }, // hinge pivots (hero_pivots.py); each opens away from the lenses
+    glint: 'lenses',
+    tilt: 0.6, // rad on the long axis while performing, so the arms' swing shows
+    // scripts/hero_fit.py lucy: IoU 0.557 -> 0.842
+    fit: { rot: 0.03054, scale: 0.95875, shift: [0.04, -0.0225] },
+  },
   pavlo: {
     glb: new URL('../public/hero-pavlo.glb', import.meta.url).href,
     tex: new URL('../public/hero-pavlo.ktx2', import.meta.url).href,
@@ -39,5 +48,7 @@ export const BEAT = each(() => 0);
 export const SHOW = each(() => uniform(0));
 /** The ember's breathing glow, 0..1 (Hero.jsx drives it; only heroes with `ember` read it). */
 export const GLOW = each(() => uniform(0));
+/** Where the lens glint is across the lenses (Hero.jsx drives it; one hero performs at a time). */
+export const SWEEP = uniform(-1);
 /** Whether a song is audible (Route.jsx writes it): the beat's riso kick runs only with the music on. */
 export const AUDIO = { playing: false };
