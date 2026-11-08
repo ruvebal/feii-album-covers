@@ -80,6 +80,10 @@ const each = (f) => Object.fromEntries(Object.keys(HEROES).map((n) => [n, f()]))
 export const BEAT = each(() => 0);
 /** 0 = the drawing, 1 = the under-plate with the 3D hero over it (Hero.jsx drives it, the layer reads it). */
 export const SHOW = each(() => uniform(0));
+/** How far each hero is up, 0..1 (Hero.jsx writes it): a newly selected side waits until the last hero is down. */
+export const UP = each(() => 0);
+/** No other hero is still drawn (switching members: the new side and hero wait, or the last one showed through). */
+export const clearFor = (name) => Object.keys(UP).every((n) => n === name || UP[n] === 0);
 /** The ember's breathing glow, 0..1 (Hero.jsx drives it; only heroes with `ember` read it). */
 export const GLOW = each(() => uniform(0));
 /** Where the lens glint is across the lenses (Hero.jsx drives it; one hero performs at a time). */

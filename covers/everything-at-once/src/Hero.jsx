@@ -30,7 +30,7 @@ import {
 import { useKTX2Texture } from '../../../src/lib/ktx2.js';
 import { useReleaseOnUnmount } from './materials.js';
 import { TURN } from './turn.js';
-import { AUDIO, BEAT, BPM, GLOW, HEROES, SHOW, STRUM, SWEEP } from './heroes.js';
+import { AUDIO, BEAT, BPM, GLOW, HEROES, SHOW, STRUM, SWEEP, UP, clearFor } from './heroes.js';
 
 const COVER_HEIGHT = 8.935; // the Blender cover camera: straight down from this height (cameras.json)
 const TAN_COVER = 18 / 50; // its half field of view: 36 mm sensor, 50 mm lens
@@ -384,11 +384,16 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
     // Back only after 0.3 s of calm: while the record settles the tests above flip back and forth, which
     // made the hero flicker in and out (user, 7 Nov).
     s.calm = handled ? 0 : s.calm + dt;
-    const on = active === name && s.calm >= CALM;
-    s.show = approach(s.show, on ? 1 : 0, reduced ? 1 : dt, reduced ? 1e9 : on ? 2.2 : 4);
+    const on = active === name && s.calm >= CALM && clearFor(name);
+    // Leaving for another member's hero goes twice as fast: that one waits for this one to be down.
+    s.show = approach(s.show, on ? 1 : 0, reduced ? 1 : dt, reduced ? 1e9 : on ? 2.2 : active ? 8 : 4);
+    // Leaving, it stops drawing once invisible: faded but drawn it still wrote depth, and the next side showed a
+    // hole in its shape until the fade reached exactly 0 (~1 s; user, 8 Nov).
+    if (!on && s.show < 0.02) s.show = 0;
     if (DEBUG?.__eaoHeroHold !== undefined) s.show = DEBUG.__eaoHeroHold;
     const g = group.current;
     g.visible = s.show > 0 && !DEBUG?.__eaoHeroHide;
+    UP[name] = s.show;
     SHOW[name].value = smooth(0, 0.2, s.show); // the handoff: hero in, side to its under-plate
     if (s.show === 0) {
       s.beat = 0;

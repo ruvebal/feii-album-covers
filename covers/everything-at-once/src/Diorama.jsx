@@ -16,7 +16,7 @@ import { MEMBERS } from './members.js';
 import LAYERS from './layers.json'; // scripts/route_assets.py
 import { TURN } from './turn.js';
 import Hero from './Hero.jsx';
-import { BEAT, HEROES, SHOW } from './heroes.js';
+import { BEAT, clearFor, HEROES, SHOW } from './heroes.js';
 
 /** Tangent of the camera's half field of view: the Blender cover camera's (36 mm sensor, 50 mm lens, 39.6 deg).
  *  The heroes then register to Karu's drawing with their true proportions (Hero.jsx); with the earlier 30 deg
@@ -92,14 +92,15 @@ function Layer({ name, active, spread, reduced }) {
     const dt = Math.min(delta, 0.05); // back from a hidden tab: no snap
     const st = s.current;
     const mine = active === name;
+    const up = mine && clearFor(name); // a newly selected side lifts once the last hero is down
     if (active !== st.was) {
       if (mine || st.was === name) st.kick = 1; // the side that starts or stops performing kicks
       st.was = active;
     }
     const k = reduced ? 1 : dt;
     const rate = reduced ? 1e9 : 8;
-    st.lift = approach(st.lift, mine ? LIFT : 0, k, rate);
-    st.grow = approach(st.grow, mine ? GROW : 1, k, rate);
+    st.lift = approach(st.lift, up ? LIFT : 0, k, rate);
+    st.grow = approach(st.grow, up ? GROW : 1, k, rate);
     st.blur = approach(st.blur, active && !mine && name !== 'star' ? 1 : 0, k, rate);
     st.kick = reduced ? 0 : Math.max(0, st.kick - dt * 2.5);
     U[name].blur.value = st.blur;

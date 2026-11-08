@@ -10,7 +10,7 @@ import { withinCeiling } from '../../../src/lib/budget.js';
 import usePrefersReducedMotion from '../../../src/lib/usePrefersReducedMotion.js';
 import { CEILING } from './budget.js';
 import { createTransport } from './audio.js';
-import { AUDIO } from './heroes.js';
+import { AUDIO, UP } from './heroes.js';
 import { MEMBERS, TRACKS } from './members.js';
 import Record from './Record.jsx';
 import { MIRROR } from './materials.js';
@@ -197,10 +197,12 @@ function CoverRoute() {
     window.__eaoTurn = TURN; // scripts/route-check.mjs reads the gesture state
     window.__eaoAudio = transport; // ... and which songs are sounding
     window.__eaoMirror = MIRROR; // ... and the mirror's uniforms
+    window.__eaoUp = UP; // ... and how far each hero is up
     return () => {
       delete window.__eaoTurn;
       delete window.__eaoAudio;
       delete window.__eaoMirror;
+      delete window.__eaoUp;
     };
   }, [debug]);
   useEffect(() => {
