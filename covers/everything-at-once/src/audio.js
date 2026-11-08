@@ -5,9 +5,9 @@
 // The context is created and resumed inside the visitor's gesture (unlock), so later loading never loses
 // the browser's permission. A blocked start is reported, never hidden; unlock() again retries.
 //
-// Excerpts: public/audio/<file>.{opus,m4a}. Until the band's loop points arrive, git-ignored placeholder
-// excerpts in public/audio-placeholder/ (scripts/audio_excerpts.py) stand in; a song with neither file
-// says so instead of playing something else.
+// Excerpts: public/audio/<file>.{opus,m4a}, whole bars from the band's loop starts, each starting on a beat
+// (scripts/audio_excerpts.py), so a song's beat is its position * BPM / 60. A song without a file says so
+// instead of playing something else.
 
 export const INTERLUDE = 'Good Morning, Mr. Suicide';
 const FILE = {
@@ -18,11 +18,17 @@ const FILE = {
   'Might Be Exaggerating': 'might-be-exaggerating',
   'Nihongo Hanasemasen': 'nihongo-hanasemasen',
 };
-const urls = (files) => Object.fromEntries(Object.entries(files).map(([path, url]) => [path.split('/').pop(), url]));
-const URLS = {
-  ...urls(import.meta.glob('../public/audio-placeholder/*.{opus,m4a}', { query: '?url', import: 'default', eager: true })),
-  ...urls(import.meta.glob('../public/audio/*.{opus,m4a}', { query: '?url', import: 'default', eager: true })),
+/** Each song's tempo (the band's, 8 Nov; the excerpts are cut on it). */
+const BPM = {
+  "Let's Go!!1!1": 125,
+  'Good Morning, Mr. Suicide': 125,
+  'Gringo Star': 121,
+  'Es Peligroso Ir Solo': 120,
+  'Might Be Exaggerating': 165,
+  'Nihongo Hanasemasen': 170,
 };
+const urls = (files) => Object.fromEntries(Object.entries(files).map(([path, url]) => [path.split('/').pop(), url]));
+const URLS = urls(import.meta.glob('../public/audio/*.{opus,m4a}', { query: '?url', import: 'default', eager: true }));
 const FADE = 1.5; // s, crossfade between songs
 const FADE_IN = 1.2; // s, the record comes out: the music swells in
 const FADE_OUT = 0.8; // s, the record goes in: the music fades, then the context suspends
@@ -175,6 +181,17 @@ export function createTransport(onStatus) {
     setSong(memberSong) {
       song = memberSong ?? INTERLUDE;
       sync();
+    },
+    /**
+     * The audible song's tempo and beat (beats into its loop, as heard: output latency taken off), or null
+     * while nothing plays.
+     * @returns {{ bpm: number, beat: number } | null}
+     */
+    clock() {
+      if (!cur || !on || ctx?.state !== 'running') return null;
+      const heard = ctx.currentTime - (ctx.outputLatency || ctx.baseLatency || 0);
+      const pos = (((cur.offset + heard - cur.at) % cur.buffer.duration) + cur.buffer.duration) % cur.buffer.duration;
+      return { bpm: BPM[cur.song], beat: (pos * BPM[cur.song]) / 60 };
     },
     /** The songs with a live source right now, fading ones included (for the route checks). */
     sounding: () => [...live.values()],

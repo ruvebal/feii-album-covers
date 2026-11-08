@@ -208,7 +208,9 @@ function CoverRoute() {
   useEffect(() => {
     const t = createTransport(setSound);
     transport.current = t;
+    AUDIO.clock = t.clock;
     return () => {
+      AUDIO.clock = null;
       t.close();
       transport.current = null;
     };

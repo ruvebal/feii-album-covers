@@ -2,7 +2,7 @@
 
 import { uniform } from 'three/tsl';
 
-export const BPM = 96; // fixed tempo while the sound is off (DIRECTION-v2 §8)
+export const BPM = 96; // fixed tempo while the sound is off (DIRECTION-v2 §8); a playing song sets its own
 
 /** Per member: the GLB, its texture and the moving parts. */
 export const HEROES = {
@@ -20,6 +20,7 @@ export const HEROES = {
     fold: { Arm_upper: 1, Arm_lower: -1 }, // hinge pivots (hero_pivots.py); each opens away from the lenses
     glint: 'lenses',
     tilt: 0.6, // rad on the long axis while performing, so the arms' swing shows
+    half: true, // plays at half the song's tempo: 170 BPM made the arms flap (user, 8 Nov)
     // scripts/hero_fit.py lucy: IoU 0.557 -> 0.842
     fit: { rot: 0.03054, scale: 0.95875, shift: [0.04, -0.0225] },
   },
@@ -85,5 +86,9 @@ export const GLOW = each(() => uniform(0));
 export const SWEEP = uniform(-1);
 /** How hard the guitar's strings vibrate, 0..1 (Hero.jsx drives it on the beat, only with the music on). */
 export const STRUM = uniform(0);
-/** Whether a song is audible (Route.jsx writes it): the beat's riso kick runs only with the music on. */
-export const AUDIO = { playing: false };
+/**
+ * Whether a song is audible, and its clock (Route.jsx writes both): the beat's riso kick runs only with the
+ * music on, and the heroes play on the song's beat.
+ * @type {{ playing: boolean, clock: (() => { bpm: number, beat: number } | null) | null }}
+ */
+export const AUDIO = { playing: false, clock: null };

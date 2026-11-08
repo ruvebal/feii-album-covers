@@ -398,8 +398,17 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
     }
     const lift = reduced ? 0 : smooth(0.15, 1, s.show); // leaves the page after the handoff
     const perf = reduced ? 0 : smooth(0.7, 1, s.show); // plays once it is up
-    s.beat += (dt * BPM) / 60;
-    s.beat %= 64; // bounded
+    // With a song playing the hero keeps its tempo and locks onto its beat: the phase snaps while the hero is
+    // not yet playing, and eases in (no jump) once it is.
+    const clock = AUDIO.playing ? AUDIO.clock?.() : null;
+    const k = clock && spec.half ? 0.5 : 1; // a half-time hero locks onto every other beat (loops are whole bars)
+    s.beat += (dt * (clock?.bpm ?? BPM) * k) / 60;
+    if (clock) {
+      const err = ((((clock.beat * k - s.beat) % 1) + 1.5) % 1) - 0.5;
+      s.beat += perf === 0 ? err : err * Math.min(1, dt * 4);
+    }
+    s.beat = ((s.beat % 64) + 64) % 64; // bounded
+    if (DEBUG?.__eaoHeroRigs?.[name]) DEBUG.__eaoHeroRigs[name].heroBeat = s.beat; // for the sync check
     const phase = s.beat % 1;
     const pulse = Math.max(0, Math.sin(phase * Math.PI)) ** 4 * perf;
     // Parts that hop in turn (the cigarettes, up off the page in model units) or the whole hero (the metronome).
