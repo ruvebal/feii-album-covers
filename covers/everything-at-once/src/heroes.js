@@ -39,6 +39,27 @@ export const HEROES = {
     },
     fit: { rot: 0, scale: 1, shift: [0, 0] }, // the parts are placed; no whole-hero fit
   },
+  guille: {
+    glb: new URL('../public/hero-guille.glb', import.meta.url).href,
+    tex: new URL('../public/hero-guille.ktx2', import.meta.url).href,
+    // The six strings, saddle -> nut, glTF space (Blender's string curves are not in the GLB: the route draws them).
+    strings: [
+      [[-3.751, 0.71, 4.454], [-6.781, 0.68, -6.07]], // low E
+      [[-3.589, 0.71, 4.405], [-6.664, 0.68, -6.105]], // A
+      [[-3.428, 0.71, 4.357], [-6.547, 0.68, -6.14]], // D
+      [[-3.279, 0.71, 4.312], [-6.43, 0.68, -6.175]], // G
+      [[-3.111, 0.71, 4.262], [-6.314, 0.68, -6.21]], // B
+      [[-2.943, 0.71, 4.212], [-6.198, 0.68, -6.244]], // high E
+    ],
+    // The guitar is ~2.5 sleeves long and mostly off the cover; it stays full size and sticks out (user, 8 Nov).
+    // It rises a little along the ray through its body (glTF; the body's centre in Blender), not its box centre,
+    // so the drawn body stays put; then the neck swings out past the sleeve's edge and rocks on the beat.
+    anchor: [-3.595, 0.3, 3.431],
+    rise: 0.05, // of the hero's size (RISE is for hand-sized props)
+    rock: { out: 0.3, beat: 0.06 }, // rad about the page normal through the anchor: swung out, then +- on the beat
+
+    fit: { rot: 0, scale: 0.93906, shift: [-0.02, 0] },
+  },
 };
 const each = (f) => Object.fromEntries(Object.keys(HEROES).map((n) => [n, f()]));
 
@@ -50,5 +71,7 @@ export const SHOW = each(() => uniform(0));
 export const GLOW = each(() => uniform(0));
 /** Where the lens glint is across the lenses (Hero.jsx drives it; one hero performs at a time). */
 export const SWEEP = uniform(-1);
+/** How hard the guitar's strings vibrate, 0..1 (Hero.jsx drives it on the beat, only with the music on). */
+export const STRUM = uniform(0);
 /** Whether a song is audible (Route.jsx writes it): the beat's riso kick runs only with the music on. */
 export const AUDIO = { playing: false };

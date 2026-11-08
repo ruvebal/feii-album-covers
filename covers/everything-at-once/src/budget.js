@@ -10,7 +10,10 @@
 // triangles 343, geometries 16, textures 14; Pavlo selected calls 25, triangles 1527, geometries 21, textures 15.
 // 8 Nov, Lucy's sunglasses (frame, lenses, two arms; plate and hero textures resident): rest calls 16,
 // triangles 343, geometries 16, textures 15; Lucy selected calls 25, triangles 11589, geometries 21, textures 16.
-// Re-measure as each of the other two heroes lands.
+// 8 Nov, Guille's guitar (one joined mesh of ~12k triangles, drawn in two passes as a transparent double-sided
+// material, plus 6 instanced strings; plate and hero textures resident): rest calls 16, triangles 343,
+// geometries 16, textures 16; Guille selected calls 20, triangles 24659, geometries 19, textures 17.
+// Re-measure when Javi's controller lands.
 
 /** @type {import('../../../src/lib/types.js').Ceiling | null} */
-export const CEILING = { calls: 25, triangles: 12000, geometries: 21, textures: 16 };
+export const CEILING = { calls: 25, triangles: 25000, geometries: 21, textures: 17 };

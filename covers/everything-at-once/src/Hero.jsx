@@ -11,11 +11,25 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three/webgpu';
 import { Box3, MathUtils, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
-import { instancedBufferAttribute, positionLocal, smoothstep, texture, uv, vec2, vec3, vec4 } from 'three/tsl';
+import {
+  float,
+  instanceIndex,
+  instancedBufferAttribute,
+  mix,
+  positionLocal,
+  sin,
+  smoothstep,
+  texture,
+  time,
+  uv,
+  vec2,
+  vec3,
+  vec4,
+} from 'three/tsl';
 import { useKTX2Texture } from '../../../src/lib/ktx2.js';
 import { useReleaseOnUnmount } from './materials.js';
 import { TURN } from './turn.js';
-import { AUDIO, BEAT, BPM, GLOW, HEROES, SHOW, SWEEP } from './heroes.js';
+import { AUDIO, BEAT, BPM, GLOW, HEROES, SHOW, STRUM, SWEEP } from './heroes.js';
 
 const COVER_HEIGHT = 8.935; // the Blender cover camera: straight down from this height (cameras.json)
 const TAN_COVER = 18 / 50; // its half field of view: 36 mm sensor, 50 mm lens
@@ -44,6 +58,8 @@ const RISE = 0.28; // of the hero's size, towards the camera
 const BOB = 0.12; // model units (a cigarette is 1.5 long)
 const PUFFS = 8; // smoke puffs per ember, one instanced draw for all of them
 const SMOKE_LIFE = 2.6; // s from the ember until a puff has faded
+const STRING_W = 0.045; // model units across a string (the guitar's body is ~5.5 wide)
+const STRING_AMP = 0.06; // model units: the widest swing of a string's middle at a full strum
 
 /** An image-space similarity for the head-on camera, as a sleeve-space matrix: rotation and scale about the
  *  optical axis, shift (ndc) as a shear along the view, so every depth moves by the same amount on screen. */
@@ -180,6 +196,38 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
     [smoke],
   );
 
+  // The guitar's strings: one instanced strip per string, saddle to nut, standing-wave vibration in the vertex
+  // shader (fundamental mode across the strip, fast, a different phase per string), as hard as STRUM.
+  const strings = useMemo(() => {
+    if (!spec.strings) return null;
+    const geo = new THREE.PlaneGeometry(1, STRING_W, 32, 1).rotateX(-Math.PI / 2).translate(0.5, 0, 0);
+    const m = new THREE.MeshBasicNodeMaterial({ transparent: true });
+    const wave = sin(positionLocal.x.mul(Math.PI)).mul(sin(time.mul(46).add(float(instanceIndex).mul(1.9))));
+    m.positionNode = positionLocal.add(vec3(0, 0, wave.mul(STRUM).mul(STRING_AMP)));
+    // pale metal with Karu's plum ink along both edges
+    const across = uv().y.sub(0.5).abs();
+    m.colorNode = vec4(mix(vec3(0.024, 0.0025, 0.027), vec3(0.86, 0.78, 0.9), smoothstep(0.5, 0.22, across)), show);
+    const mesh = new THREE.InstancedMesh(geo, m, spec.strings.length);
+    spec.strings.forEach(([a, b], i) => {
+      const from = new Vector3(...a);
+      const d = new Vector3(...b).sub(from);
+      const len = d.length();
+      mesh.setMatrixAt(i, new Matrix4().compose(from, new Quaternion().setFromUnitVectors(X_AXIS, d.normalize()), new Vector3(len, 1, 1)));
+    });
+    mesh.renderOrder = 102; // over the guitar
+    mesh.frustumCulled = false; // the vertex shader moves the strips past their box
+    return mesh;
+  }, [spec.strings, show]);
+  useEffect(
+    () => () => {
+      if (!strings) return;
+      strings.geometry.dispose();
+      strings.material.dispose();
+      strings.dispose();
+    },
+    [strings],
+  );
+
   // Registration: the GLB keeps its place in the cover scene (glTF y = Blender up = towards the cover camera,
   // which looks straight down from COVER_HEIGHT). The route camera has the cover camera's field of view, so
   // scaling about it by k keeps every point's projection: the hero lies exactly where the 3D render had it,
@@ -210,7 +258,8 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
       .makeTranslation(0, 0, cam - k * COVER_HEIGHT)
       .multiply(new Matrix4().makeScale(k, k, k))
       .multiply(new Matrix4().makeRotationX(Math.PI / 2));
-    const centre = box.getCenter(new Vector3()).applyMatrix4(place); // in sleeve space
+    // the ray it rises along: through its box centre, or through `anchor` (glTF) for a prop mostly off the cover
+    const centre = (spec.anchor ? new Vector3(...spec.anchor) : box.getCenter(new Vector3())).applyMatrix4(place);
     const pivot = new Matrix4()
       .makeTranslation(rest.ax * rest.comp, rest.ay * rest.comp, rest.z)
       .multiply(new Matrix4().makeScale(rest.comp, rest.comp, rest.comp));
@@ -221,6 +270,7 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
     rig.current = {
       place,
       mid: box.getCenter(new Vector3()), // glTF space: the tilt turns about it
+      anchor: spec.anchor ? new Vector3(...spec.anchor) : null,
       unpivot, // the hero lives in its side's pivot, so it lifts and grows with the side
       centre,
       toCamera,
@@ -252,13 +302,14 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
         audio: AUDIO,
         show: SHOW,
         glow: GLOW,
+        strum: STRUM,
       };
     return () => {
       if (swing) swing.quaternion.copy(rig.current.swingRest); // the cached scene stays at rest
       for (const b of rig.current.bob) b.o.position.y = b.y;
       for (const f of rig.current.fold) f.o.quaternion.copy(f.rest);
     };
-  }, [scene, rest, viewDistance, frontZ, spec.swing, spec.bob, spec.place, spec.ember, spec.fold, name]);
+  }, [scene, rest, viewDistance, frontZ, spec.swing, spec.bob, spec.place, spec.ember, spec.fold, spec.anchor, name]);
 
   const group = useRef();
   useEffect(() => {
@@ -336,10 +387,12 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
     const steady = reduced ? 0.6 : perf * 0.6;
     GLOW[name].value = AUDIO.playing && !reduced ? perf * (0.45 + 0.55 * (1 - phase) ** 3) : steady;
     if (smoke) puffs(smoke, R.embers, s.time, reduced ? 0 : perf, GLOW[name].value);
+    // The strings ring on every beat and die down until the next, only with a song playing; silent they rest.
+    if (strings) STRUM.value = AUDIO.playing && !reduced ? perf * (1 - phase) ** 2 : 0;
     // Rise towards the viewer along the camera ray through its centre: it stays where the drawing has it and
     // just comes closer. No turn (user, 7 Nov).
     const e = lift * lift * (3 - 2 * lift);
-    tmpM.makeTranslation(tmpV.copy(R.toCamera).multiplyScalar(R.size * RISE * e + hop));
+    tmpM.makeTranslation(tmpV.copy(R.toCamera).multiplyScalar(R.size * (spec.rise ?? RISE) * e + hop));
     // At the handoff: the image-space fit onto Karu's ink, exact for the head-on camera (rotation and scale
     // about the optical axis, shift as a shear along the view). It relaxes as the hero rises.
     const f = 1 - e;
@@ -357,6 +410,16 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
         .multiply(tmpQM.makeRotationAxis(Z_AXIS, a))
         .multiply(tmpT.makeTranslation(-R.mid.x, -R.mid.y, -R.mid.z));
     }
+    if (spec.rock) {
+      // The guitar swings out about its body as it rises (page normal = glTF y; positive turns the neck outwards)
+      // and rocks on the beat; it lands level.
+      const a = (spec.rock.out * e + spec.rock.beat * Math.sin(s.beat * Math.PI) * perf) * (reduced ? 0 : 1);
+      const p = R.anchor;
+      g.matrix
+        .multiply(tmpT.makeTranslation(p.x, p.y, p.z))
+        .multiply(tmpQM.makeRotationAxis(Y_AXIS, a))
+        .multiply(tmpT.makeTranslation(-p.x, -p.y, -p.z));
+    }
     g.matrixWorldNeedsUpdate = true;
   });
 
@@ -365,6 +428,7 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
       <primitive object={scene} />
       {smoke && <primitive object={smoke.mesh} />}
       {smoke && <primitive object={smoke.points} />}
+      {strings && <primitive object={strings} />}
     </group>
   );
 }

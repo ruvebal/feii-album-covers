@@ -33,6 +33,8 @@ Pins: three@0.185.1, @react-three/fiber@9.8.2, @react-three/drei@10.7.9, react@1
 | same, Pavlo selected (ghost, plate, 3 cigarettes, instanced smoke and ember glows) | same | off | 25 | 1,527 | 21 | 15 | yes |
 | same, Lucy's sunglasses loaded too, rest | same | off | 16 | 343 | 16 | 15 | yes |
 | same, Lucy selected (ghost, plate, frame, lenses, two arms) | same | off | 25 | 11,589 | 21 | 16 | yes |
+| same, Guille's guitar loaded too, rest | same | off | 16 | 343 | 16 | 16 | yes |
+| same, Guille selected (ghost, plate, guitar in two passes, 6 instanced strings) | same | off | 20 | 24,659 | 19 | 17 | yes |
 | cover + style treatment (task2) | ... | off | ... | ... | ... | ... | ... |
 | cover + KTX2 textures (task3) | ... | off | ... | ... | ... | ... | ... |
 
