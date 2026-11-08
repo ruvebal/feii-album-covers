@@ -10,9 +10,10 @@ import { withinCeiling } from '../../../src/lib/budget.js';
 import usePrefersReducedMotion from '../../../src/lib/usePrefersReducedMotion.js';
 import { CEILING } from './budget.js';
 import { createTransport } from './audio.js';
+import { AUDIO } from './heroes.js';
 import { MEMBERS, TRACKS } from './members.js';
 import Record from './Record.jsx';
-import { FRONT_Z, VIEW_DISTANCE } from './Diorama.jsx';
+import { FOV, FRONT_Z, VIEW_DISTANCE } from './Diorama.jsx';
 import RouteBudgetProbe from './RouteBudgetProbe.jsx';
 import { move, press, release, resetTurn, TURN } from './turn.js';
 import './route.css';
@@ -139,6 +140,12 @@ function CoverRoute() {
   const pendingOpening = useRef(false);
   const flickedAt = useRef(0); // when the last drag ended: its pointer-up/click is not a tap
   const [sound, setSound] = useState({ state: 'off', song: null });
+  useEffect(() => {
+    AUDIO.playing = sound.state === 'playing';
+    return () => {
+      AUDIO.playing = false;
+    };
+  }, [sound.state]);
   const transport = useRef(null);
 
   // The opening: consumed as soon as it starts (also when reduced motion skips it), so leaving and
@@ -167,10 +174,11 @@ function CoverRoute() {
     if (reduced) settle();
   }, [reduced, settle]);
 
-  // Hover previews only on the front with the vinyl put away; with it out the retained member performs to
-  // its song; on the back nobody does (the selection is kept).
+  // Hover previews only on the front with the vinyl put away and nobody selected: once a member is chosen
+  // only a click changes it (user, 7 Nov). With the vinyl out the retained member performs to its song; on
+  // the back nobody does (the selection is kept).
   const hoverable = face === 'front' && !out;
-  const active = face !== 'front' ? null : out ? pinned : (hovered ?? pinned);
+  const active = face !== 'front' ? null : (pinned ?? (out ? null : hovered));
   const member = byId(active ?? pinned);
   const verdict = withinCeiling(budget, CEILING);
 
@@ -317,7 +325,7 @@ function CoverRoute() {
             dpr={DPR}
             eventSource={stage}
             events={stageEvents}
-            camera={{ position: [0, 0, VIEW_DISTANCE + FRONT_Z], fov: 30 }}
+            camera={{ position: [0, 0, VIEW_DISTANCE + FRONT_Z], fov: FOV }}
             gl={async (props) => {
               // TSL on the WebGL 2 backend everywhere (course: WebGL); TSL compiles to GLSL there
               const r = new THREE.WebGPURenderer({ ...props, forceWebGL: true });

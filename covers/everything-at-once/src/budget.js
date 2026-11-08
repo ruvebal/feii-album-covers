@@ -4,7 +4,9 @@
 // textures 11. Calls come from src/RouteBudgetProbe.jsx (per-frame draw calls on WebGPURenderer).
 // 7 Nov, the disc's rear face and rear label added: calls 16 at rest, 17 with a member selected (its
 // ghost) or the vinyl out; triangles 345, geometries 17, textures 12 (docs/renderer-info.md).
-// Re-measure when the tree changes (heroes next).
+// 7 Nov night, Andrés's metronome hero: rest calls 16, triangles 343, geometries 16, textures 13; Andrés
+// selected (ghost + the hero's meshes) calls 21, triangles 4793, geometries 19, textures 14.
+// Re-measure as each of the other four heroes lands.
 
 /** @type {import('../../../src/lib/types.js').Ceiling | null} */
-export const CEILING = { calls: 18, triangles: 400, geometries: 18, textures: 12 };
+export const CEILING = { calls: 22, triangles: 5000, geometries: 20, textures: 14 };

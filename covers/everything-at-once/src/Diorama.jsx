@@ -15,9 +15,18 @@ import { layerMaterial, RECEDE, useReleaseOnUnmount } from './materials.js';
 import { MEMBERS } from './members.js';
 import LAYERS from './layers.json'; // scripts/route_assets.py
 import { TURN } from './turn.js';
+import Hero from './Hero.jsx';
+import { BEAT, HEROES, SHOW } from './heroes.js';
 
+/** Tangent of the camera's half field of view: the Blender cover camera's (36 mm sensor, 50 mm lens, 39.6 deg).
+ *  The heroes then register to Karu's drawing with their true proportions (Hero.jsx); with the earlier 30 deg
+ *  the drawing's stronger perspective could only be matched by stretching them along the view. */
+export const HALF_FOV_TAN = 18 / 50;
+export const FOV = (2 * Math.atan(HALF_FOV_TAN) * 180) / Math.PI;
 /** Camera distance from the sleeve's front at rest; Record.jsx frames the sleeve with it. */
-export const VIEW_DISTANCE = 1 / Math.tan((15 * Math.PI) / 180);
+export const VIEW_DISTANCE = 1 / HALF_FOV_TAN;
+/** How far the camera pulls back with the vinyl out: the same framing as before the FOV change (3.2 at 30 deg). */
+export const PULL_BACK = VIEW_DISTANCE * 0.8574;
 export const FRONT_Z = 0.015; // the sleeve's front face (half its thickness)
 const DEPTH = 0.06; // the shadow box: the nearest side sits this far in front of the star
 const LIFT = 0.05; // how far an active side comes forward
@@ -31,6 +40,8 @@ const URLS = {
   andres: url('andres'),
   guille: url('guille'),
 };
+// Under-plates: a side with its drawn hero removed, shown while that hero performs in 3D (route_assets.py).
+const PLATES = Object.fromEntries(Object.keys(HEROES).map((n) => [n, new URL(`../public/layer-${n}-plate.ktx2`, import.meta.url).href]));
 const MAP_URL = new URL('../public/sides-map.png', import.meta.url).href;
 // One pair of uniforms per layer, at module scope: the lint forbids mutating a hook's return value,
 // and one diorama exists at a time.
@@ -49,8 +60,14 @@ const approach = (v, target, dt, rate) => {
 
 function Layer({ name, active, spread, reduced }) {
   const map = useKTX2Texture(URLS[name]);
-  const mat = useMemo(() => layerMaterial(map, U[name], Object.keys(URLS).indexOf(name) * 13, name === 'star'), [map, name]);
-  const ghostMat = useMemo(() => layerMaterial(map, GHOST[name]), [map, name]);
+  // Sides without a hero load their own art again here (the loader's cache returns the same texture).
+  const plateMap = useKTX2Texture(PLATES[name] ?? URLS[name]);
+  const plate = PLATES[name] ? plateMap : null;
+  const mat = useMemo(
+    () => layerMaterial(map, U[name], Object.keys(URLS).indexOf(name) * 13, name === 'star', plate, SHOW[name]),
+    [map, plate, name],
+  );
+  const ghostMat = useMemo(() => layerMaterial(map, GHOST[name], 0, false, plate, SHOW[name]), [map, plate, name]);
   useEffect(
     () => () => {
       mat.dispose();
@@ -58,11 +75,17 @@ function Layer({ name, active, spread, reduced }) {
     },
     [mat, ghostMat],
   );
-  useReleaseOnUnmount([URLS[name]], [map]);
+  useReleaseOnUnmount(plate ? [URLS[name], PLATES[name]] : [URLS[name]], plate ? [map, plate] : [map]);
   const info = LAYERS[name] ?? { depth: 0, anchor: [0.5, 0.5] };
   const [ax, ay] = [(info.anchor[0] - 0.5) * 2, (info.anchor[1] - 0.5) * 2];
   const pivot = useRef();
   const ghost = useRef();
+  // The pivot's rest pose (spread in, not lifted, upright): the hero registers to the drawing there.
+  const rest = useMemo(() => {
+    const z = FRONT_Z + 0.001 + info.depth * DEPTH;
+    const comp = (VIEW_DISTANCE + FRONT_Z - z) / VIEW_DISTANCE;
+    return { z, comp, ax, ay };
+  }, [info.depth, ax, ay]);
   const s = useRef({ lift: 0, grow: 1, blur: 0, kick: 0, was: active });
 
   useFrame((_, delta) => {
@@ -81,7 +104,7 @@ function Layer({ name, active, spread, reduced }) {
     st.kick = reduced ? 0 : Math.max(0, st.kick - dt * 2.5);
     U[name].blur.value = st.blur;
     if (name === 'star') RECEDE.value = approach(RECEDE.value, active ? 1 : 0, k, rate); // the page recedes too
-    U[name].shift.value = 0.006 * st.kick * st.kick;
+    U[name].shift.value = Math.max(0.006 * st.kick * st.kick, BEAT[name] ?? 0); // + the hero's beat
     // Turned away from upright, the shadow box flattens onto the sleeve (lift and growth with it).
     const f = TURN.flat;
     const z = FRONT_Z + 0.001 + (info.depth * DEPTH * spread.current + st.lift) * f;
@@ -119,6 +142,17 @@ function Layer({ name, active, spread, reduced }) {
         <mesh position={[-ax, -ay, 0]} material={mat} renderOrder={active === name ? 100 : order}>
           <planeGeometry args={[2, 2]} />
         </mesh>
+        {HEROES[name] && (
+          <Hero
+            name={name}
+            active={active}
+            reduced={reduced}
+            shift={U[name].shift}
+            rest={rest}
+            viewDistance={VIEW_DISTANCE}
+            frontZ={FRONT_Z}
+          />
+        )}
       </group>
     </>
   );

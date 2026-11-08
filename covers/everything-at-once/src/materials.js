@@ -28,28 +28,34 @@ const recede = (rgb, k) => mix(rgb, vec3(rgb.dot(vec3(0.299, 0.587, 0.114))), k.
  *   irregular by nature, so the cut never has to trace the drawing's details. Distance to the edge comes
  *   from the layer's own alpha blurred at mip 3, all inside this material: no extra pass.
  * - `seed` makes each side tear differently.
+ * - `plate` (optional) is the side with its drawn hero removed; `plateMix` (0..1) crossfades to it while the
+ *   3D hero performs. Every tap reads the mix, so the tear and shadow follow the plate's outline too.
  * Colour: the KTX2 file is tagged sRGB, so sampling returns linear colour and the renderer encodes
  * the output; no manual conversion here.
  * @param {THREE.Texture} map
  * @param {{ shift: import('three/tsl').UniformNode<number>, blur: import('three/tsl').UniformNode<number>,
  *   clip: import('three/tsl').UniformNode<import('three').Vector4>, lift: import('three/tsl').UniformNode<number> }} u
  */
-export function layerMaterial(map, u, seed = 0, backdrop = false) {
+export function layerMaterial(map, u, seed = 0, backdrop = false, plate = null, plateMix = null) {
   const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false });
   // The blur and the tear only run while in use: both are branches on a uniform (the same for every
   // pixel), so a side at rest pays for three taps, not for twelve plus five octaves of noise. Six
   // full-sleeve layers stack over every pixel, so this decides the frame time on integrated GPUs.
+  const tex = (q, bias) => {
+    const t = (img) => (bias === undefined ? texture(img, q) : texture(img, q).bias(bias));
+    return plate ? mix(t(map), t(plate), plateMix) : t(map);
+  };
   m.colorNode = Fn(() => {
     const p = uv();
     const d = vec2(u.shift, u.shift.mul(0.6));
-    const r = texture(map, p.add(d));
-    const g = texture(map, p);
-    const b = texture(map, p.sub(d));
+    const r = tex(p.add(d));
+    const g = tex(p);
+    const b = tex(p.sub(d));
     const sharp = vec4(r.r, g.g, b.b, max(max(r.a, g.a), b.a));
     const c = sharp.toVar();
     If(u.blur.greaterThan(0), () => {
       const o = u.blur.mul(0.004);
-      const tap = (dx, dy) => texture(map, p.add(vec2(dx, dy).mul(o))).bias(u.blur.mul(3));
+      const tap = (dx, dy) => tex(p.add(vec2(dx, dy).mul(o)), u.blur.mul(3));
       const soft = tap(1, 0.5).add(tap(-1, -0.5)).add(tap(-0.5, 1)).add(tap(0.5, -1)).mul(0.25);
       const grey = vec3(soft.rgb.dot(vec3(0.299, 0.587, 0.114)));
       // Only the colour blurs; the outline stays the sharp one. A blurred alpha spread past the edge and read
@@ -62,7 +68,7 @@ export function layerMaterial(map, u, seed = 0, backdrop = false) {
     const out = c.toVar();
     If(u.lift.greaterThan(0), () => {
       // Torn paper. `dist` ~ signed distance to the silhouette (+ inside), from alpha averaged at mip 3.
-      const tap3 = (dx, dy) => texture(map, p.add(vec2(dx, dy))).bias(3).a;
+      const tap3 = (dx, dy) => tex(p.add(vec2(dx, dy)), 3).a;
       const e = 0.0015;
       const dist = tap3(e, 0).add(tap3(-e, 0)).add(tap3(0, e)).add(tap3(0, -e)).mul(0.25).sub(0.5);
       const q = vec3(p.mul(30), float(seed));
@@ -81,7 +87,7 @@ export function layerMaterial(map, u, seed = 0, backdrop = false) {
       const pieceA = mix(c.a, paperA, lift);
       const pieceRgb = mix(c.rgb, tornRgb, lift);
       // Shadow of the torn piece, cast down-right (light from the top-left) onto the page below.
-      const shadow = texture(map, p.add(vec2(-0.006, 0.009))).bias(4).a.mul(0.55).mul(lift);
+      const shadow = tex(p.add(vec2(-0.006, 0.009)), 4).a.mul(0.55).mul(lift);
       const outside = pieceA.oneMinus();
       const a = pieceA.add(outside.mul(shadow));
       out.assign(vec4(pieceRgb.mul(pieceA).add(color('#2a1030').mul(shadow).mul(outside)).div(max(a, 1e-4)), a));
@@ -108,8 +114,9 @@ const pending = new Map();
  * textures. Without a release, a cached texture keeps listeners on every renderer it was uploaded to.
  * @param {string[]} urls
  * @param {import('three').Texture[]} textures
+ * @param {() => void} [after] releases anything else loaded with them (a hero's GLB)
  */
-export function useReleaseOnUnmount(urls, textures) {
+export function useReleaseOnUnmount(urls, textures, after) {
   const key = urls.join('|');
   useEffect(() => {
     clearTimeout(pending.get(key));
@@ -121,6 +128,7 @@ export function useReleaseOnUnmount(urls, textures) {
           pending.delete(key);
           urls.forEach((u) => useLoader.clear(KTX2Loader, u));
           textures.forEach((t) => t.dispose());
+          after?.();
         }, 0),
       );
     };

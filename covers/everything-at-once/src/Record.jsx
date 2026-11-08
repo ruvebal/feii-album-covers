@@ -15,7 +15,7 @@ import { MathUtils, Vector3 } from 'three/webgpu';
 import { color, float, length, mix, sin, uv, vec3 } from 'three/tsl';
 import { useKTX2Texture } from '../../../src/lib/ktx2.js';
 import { faceMaterial, useReleaseOnUnmount } from './materials.js';
-import Diorama, { FRONT_Z, VIEW_DISTANCE } from './Diorama.jsx';
+import Diorama, { FRONT_Z, PULL_BACK, VIEW_DISTANCE } from './Diorama.jsx';
 import { coastStep, FACES, TURN } from './turn.js';
 
 const BACK_URL = new URL('../public/back.ktx2', import.meta.url).href;
@@ -139,9 +139,11 @@ export default function Record({ face, out, reduced, active, hoverable, spread, 
     const st = s.current;
     const rate = reduced ? 1e9 : 6;
     const k = reduced ? 1 : dt;
-    const still = TURN.mode === 'idle' || TURN.mode === 'pending'; // no hover tilt while handled
-    st.rx = approach(st.rx, reduced || !still ? 0 : -pointer.y * TILT, k, rate);
-    st.ry = approach(st.ry, reduced || !still ? 0 : pointer.x * TILT, k, rate);
+    const still = TURN.mode === 'idle' || TURN.mode === 'pending';
+    // No hover tilt while handled, nor while a side is selected: the record holds still under its hero (user, 7 Nov).
+    const sway = still && !active && !reduced;
+    st.rx = approach(st.rx, sway ? -pointer.y * TILT : 0, k, rate);
+    st.ry = approach(st.ry, sway ? pointer.x * TILT : 0, k, rate);
     // Turning: the drag (or its coast) moves the target; otherwise it is the upright face. The shown
     // orientation follows more slowly than the cursor.
     coastStep(dt);
@@ -171,7 +173,7 @@ export default function Record({ face, out, reduced, active, hoverable, spread, 
     // x axis faces the other way on the back.
     const q = TURN.q;
     const cx = st.out * 0.57 * (1 - 2 * (q.y * q.y + q.z * q.z));
-    camera.position.set(cx, 0, VIEW_DISTANCE + FRONT_Z + st.out * 3.2);
+    camera.position.set(cx, 0, VIEW_DISTANCE + FRONT_Z + st.out * PULL_BACK);
     camera.lookAt(cx, 0, 0);
     flip.current.updateWorldMatrix(true, false);
     camera.updateMatrixWorld();
@@ -189,7 +191,7 @@ export default function Record({ face, out, reduced, active, hoverable, spread, 
     // Hit zones. The vinyl's: its edge strip (extraction starts only on the settled front), or the exposed
     // disc once out (returning works from either face).
     // The strip widens as the camera pulls back, so it keeps its 44 px on screen.
-    const zone = ZONE * (1 + (st.out * 3.2) / (VIEW_DISTANCE + FRONT_Z));
+    const zone = ZONE * (1 + (st.out * PULL_BACK) / (VIEW_DISTANCE + FRONT_Z));
     if (out || pulling || settled) {
       writeQuad(TURN.vinylZone, st.out > 0.5 ? 1 : 1 - zone, Math.max(1.02, st.out * TRAVEL + DISC), DISC, m, camera, size);
     } else hideQuad(TURN.vinylZone);
