@@ -12,6 +12,8 @@ export const HEROES = {
     swing: 'Metronome_pendulum', // pivot empty at the rod's foot; swings about its local y
     // Karu's ink vs the model's cover-view silhouette: image-space rotation (rad), scale and shift (cover ndc)
     // from scripts/hero_fit.py (IoU 0.798 -> 0.888). Applied at the handoff, relaxed as the hero rises.
+    // Up, it shrinks towards its middle on the sleeve, so it clears the hint and the navigation (user, 10 Nov).
+    shrink: { to: 0.8, at: [-0.25, -0.65] },
     fit: { rot: 0.036, scale: 0.98969, shift: [-0.05938, 0.00813] },
   },
   lucy: {
@@ -21,6 +23,8 @@ export const HEROES = {
     glint: 'lenses',
     tilt: 0.6, // rad on the long axis while performing, so the arms' swing shows
     half: true, // plays at half the song's tempo: 170 BPM made the arms flap (user, 8 Nov)
+    // Up, it shrinks towards its middle on the sleeve, so the frames stay on the page (user, 10 Nov).
+    shrink: { to: 0.82, at: [-0.35, 0.6] },
     // scripts/hero_fit.py lucy: IoU 0.557 -> 0.842
     fit: { rot: 0.03054, scale: 0.95875, shift: [0.04, -0.0225] },
   },
@@ -52,12 +56,14 @@ export const HEROES = {
       [[-3.111, 0.71, 4.262], [-6.314, 0.68, -6.21]], // B
       [[-2.943, 0.71, 4.212], [-6.198, 0.68, -6.244]], // high E
     ],
-    // The guitar is ~2.5 sleeves long and mostly off the cover; it stays full size and sticks out (user, 8 Nov).
+    // The guitar is ~2.5 sleeves long and mostly off the cover; it sticks out (user, 8 Nov), shrinking to `shrink`
+    // as it rises, so on the full-page canvas it no longer covers the page (user, 10 Nov).
     // It rises a little along the ray through its body (glTF; the body's centre in Blender), not its box centre,
     // so the drawn body stays put; then the neck swings out past the sleeve's edge and rocks on the beat.
     anchor: [-3.595, 0.3, 3.431],
     rise: 0.05, // of the hero's size (RISE is for hand-sized props)
-    rock: { out: 0.3, beat: 0.06 }, // rad about the page normal through the anchor: swung out, then +- on the beat
+    shrink: { to: 0.34, at: [-0.7, -0.5] }, // up, it is this size, shrunk towards where it enters the sleeve
+    rock: { out: 0.12, beat: 0.06 }, // rad about the page normal through the anchor: swung out, then +- on the beat
 
     fit: { rot: 0, scale: 0.93906, shift: [-0.02, 0] },
   },
@@ -69,6 +75,8 @@ export const HEROES = {
     press: ['A_low-pivot', 'B_low-pivot', 'direction_low-pivot', 'C1-pivot', 'C2-pivot', 'C3-pivot', 'C4-pivot', 'start_low-pivot'],
     dpad: 'direction_low-pivot',
     stick: 'joystick_low-pivot',
+    // Up, it shrinks towards its middle on the sleeve, so it stays clear of the credits (user, 10 Nov).
+    shrink: { to: 0.64, at: [0.55, 0.62] },
     // Fitted on four landmarks (D-pad, Start, the two round buttons above it; 2.3 px rms on the 1024 cover), not the
     // silhouette: the fingers hide the drawn controller's right half, so an IoU fit dragged it 70 px off.
     fit: { rot: -0.00661, scale: 0.94819, shift: [-0.03886, -0.03258] },

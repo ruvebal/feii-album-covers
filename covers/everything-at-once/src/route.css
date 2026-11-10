@@ -1,29 +1,55 @@
-.eao {
-  --eao-star: #ffe489;
-  --eao-ink: #3a1457;
-  box-sizing: border-box;
-  min-height: 100dvh;
-  display: grid;
-  grid-template-columns: minmax(0, auto) minmax(14rem, 20rem);
-  gap: 1.5rem;
-  align-items: start; /* a panel taller than the screen must not push the stage below the fold */
-  justify-content: center;
-  /* Bottom room for the gallery's fixed project selector and route bar (src/index.css: bottom 12px
-     and 56px), which this route must not cover or move. */
-  --eao-nav: 7rem;
-  padding: 1rem 1rem calc(1rem + var(--eao-nav));
-  background: #1c0f26;
-  color: #f4ecf8;
+/* The canvas is the page (fixed, the whole viewport): the record large in the middle, the star's tunnel behind
+   it to every edge, small type in the four corners. Colours from Karu's cover. */
+html.route-everything-at-once {
+  overflow: hidden;
 }
 
-/* Square stage: at rest the record fills it exactly, so the first frame is the cover. The poster
-   (the cover itself) shows until the 3D record has loaded, and stays if it fails. */
+.eao {
+  --eao-night: #1c0f26;
+  --eao-star: #ffe489;
+  --eao-ink: #3a1457;
+  /* Bottom room for the gallery's fixed project selector and route bar (src/index.css: bottom 12px
+     and 56px), which this route must not cover or move. Diorama.jsx recordBox() uses the same 7rem. */
+  --eao-nav: 7rem;
+  --eao-edge: 1.25rem;
+  --eao-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--eao-night);
+  color: #f4ecf8;
+  font: 400 1rem/1.45 Archivo, system-ui, sans-serif;
+}
+
+.eao__stage,
 .eao__cover {
-  position: relative;
-  /* As large as fits beside the panel (20rem + gap) and above the gallery navigation. */
-  width: min(92vw, calc(100vw - 24rem), calc(100dvh - 2rem - var(--eao-nav)));
-  aspect-ratio: 1;
-  background: #1c0f26 center / cover no-repeat;
+  position: absolute;
+  inset: 0;
+}
+
+.eao__cover:focus-visible {
+  outline: 2px solid var(--eao-star);
+  outline-offset: -4px;
+}
+
+.eao__cover canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Karu's cover in the record's rest box (Route.jsx writes --eao-rs/--eao-rx/--eao-ry from recordBox()), shown
+   until the 3D record has loaded and if it fails; hidden, it still marks the rest box for the checks. */
+.eao__poster {
+  position: absolute;
+  left: calc(var(--eao-rx, 50vw) - var(--eao-rs, 60vmin) / 2);
+  top: calc(var(--eao-ry, 45vh) - var(--eao-rs, 60vmin) / 2);
+  width: var(--eao-rs, 60vmin);
+  height: var(--eao-rs, 60vmin);
+  pointer-events: none;
+}
+
+.eao__poster[data-shown='false'] {
+  visibility: hidden;
 }
 
 .eao__hit {
@@ -32,7 +58,7 @@
   width: 100%;
   height: 100%;
   overflow: visible;
-  pointer-events: none; /* only the record's own polygon takes pointers; the rest of the stage scrolls */
+  pointer-events: none; /* only the record's own polygon takes pointers */
   /* one finger on the polygon turns the record; two still zoom the page. Set here, not on the polygon:
      Chromium ignores touch-action on SVG shapes, and this box only gets touches through the polygon. */
   touch-action: pinch-zoom;
@@ -47,21 +73,10 @@
   cursor: grab;
 }
 
-.eao__status:empty {
-  display: none;
-}
-
-.eao__status button {
-  margin-left: 0.5rem;
-}
-
-.eao__cover canvas {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-/* Visually hidden, still read and selectable by assistive tech: the lettering image shows it. */
-.eao__title {
+/* Visually hidden, still read and selectable by assistive tech: the lettering image shows the title, and
+   the named controls appear only when one has keyboard focus. */
+.eao__sr-only,
+.eao__sr:not(:focus-within) {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -70,99 +85,209 @@
   white-space: nowrap;
 }
 
-.eao__members {
-  list-style: none;
+/* The presented member: no card, only Karu's drawing and the text, in the page's left column, centred on the
+   record (user, 10 Nov). */
+.eao__fore {
+  position: absolute;
+  left: var(--eao-edge);
+  top: var(--eao-ry, 50%);
+  translate: 0 -50%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  width: min(22rem, calc((100vw - var(--eao-rs, 60vmin)) / 2 - 2 * var(--eao-edge)));
+  text-shadow:
+    0 0 0.6em var(--eao-night),
+    0 0 0.2em var(--eao-night);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.eao__fore[data-shown='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.eao__info {
+  max-width: 14rem;
+}
+
+.eao__info:empty {
+  display: none;
+}
+
+.eao__info h2 {
   margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.5rem;
+  font: italic 900 clamp(1.8rem, 3.2vw, 2.6rem) / 1 'Archivo Expanded', Archivo, system-ui, sans-serif;
+  color: var(--tint);
 }
 
-.eao__members button {
-  width: 100%;
-  padding: 0.6rem 0.9rem;
-  font: inherit;
-  text-align: left;
-  color: inherit;
-  background: #2e1a3d;
-  border: 1px solid #6b4a86;
-  border-radius: 6px;
-  cursor: pointer;
+.eao__info p {
+  margin: 0.35rem 0 0;
 }
 
-.eao__members button {
-  border-left: 0.4rem solid var(--tint);
+.eao__role {
+  font-weight: 600;
 }
 
-.eao__members button:hover,
-.eao__members button:focus-visible,
-.eao__members button[aria-pressed='true'] {
-  background: #4a2a63;
-  outline: 2px solid var(--eao-star);
-  outline-offset: 2px;
+.eao__song cite {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--eao-star);
 }
 
-.eao__controls {
+/* A scrap torn from Karu's band page (scripts/band_crops.py): sized by height, the scraps vary in width. */
+.eao__band {
+  width: auto;
+  height: clamp(10rem, 24vh, 15rem);
+  rotate: -2deg;
+  filter: drop-shadow(0 0.4rem 0.6rem rgb(0 0 0 / 50%));
+}
+
+/* Keyboard focus reveals the named controls as a row of text chips at the top of the page. */
+.eao__sr:focus-within {
+  position: fixed;
+  z-index: 5;
+  inset: 0.5rem 0.5rem auto;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-block: 0.75rem;
+  gap: 0.4rem;
+  font-size: 0.875rem;
 }
 
-.eao__controls button,
-.eao__tracks button {
+.eao__sr ul,
+.eao__sr ol,
+.eao__sr li,
+.eao__controls,
+.eao__tracks {
+  display: contents;
+}
+
+.eao__tracks h2,
+.eao__tracks li:not(:has(button)) {
+  display: none; /* the list is still read; the chips are only the five titles that pick a member */
+}
+
+.eao__sr button {
   font: inherit;
   color: inherit;
-  background: #2e1a3d;
+  padding: 0.3rem 0.65rem;
+  background: var(--eao-night);
   border: 1px solid #6b4a86;
-  border-radius: 6px;
-  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
   cursor: pointer;
 }
 
-.eao__controls button:focus-visible,
-.eao__tracks button:focus-visible {
+.eao__sr button[aria-pressed='true'] {
+  border-color: var(--tint);
+  color: var(--tint);
+}
+
+.eao__sr button:focus-visible {
   outline: 2px solid var(--eao-star);
   outline-offset: 2px;
-}
-
-.eao__tracks h2 {
-  font-size: 1rem;
-  margin: 0.5rem 0 0.25rem;
-}
-
-.eao__tracks ol {
-  margin: 0;
-  padding-left: 1.4rem;
-  display: grid;
-  gap: 0.2rem;
-}
-
-.eao__tracks button {
-  padding: 0.1rem 0.4rem;
-  text-align: left;
 }
 
 .eao__tracks span {
   opacity: 0.7;
 }
 
+/* The corners: wordmark top left, credits top right, hint bottom left, status bottom right (above the gallery's
+   navigation). They fade in once, when the record is ready. */
+.eao__corner {
+  position: absolute;
+  z-index: 2;
+  margin: 0;
+  max-width: min(22rem, calc((100vw - var(--eao-rs, 60vmin)) / 2 - 2 * var(--eao-edge))); /* beside the record */
+  font-size: 0.8rem;
+  color: rgb(244 236 248 / 72%);
+  opacity: 0;
+  transition: opacity 0.4s var(--eao-ease);
+}
+
+.eao[data-ready='true'] .eao__corner {
+  opacity: 1;
+}
+
+.eao__mark {
+  top: var(--eao-edge);
+  left: var(--eao-edge);
+}
+
+.eao__mark hgroup > * {
+  margin: 0;
+}
+
+.eao__mark p {
+  font: italic 900 1.35rem / 1 'Archivo Expanded', Archivo, system-ui, sans-serif;
+  color: var(--eao-star);
+}
+
+.eao__mark h1 {
+  margin-top: 0.3rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #f4ecf8;
+}
+
+.eao__credits {
+  top: var(--eao-edge);
+  right: var(--eao-edge);
+  text-align: right;
+}
+
+.eao__credits p {
+  margin: 0;
+}
+
+.eao__credits ul {
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.eao__credits a {
+  color: var(--eao-star);
+  text-underline-offset: 0.15em;
+}
+
+.eao__credits a:focus-visible {
+  outline: 2px solid var(--eao-star);
+  outline-offset: 2px;
+}
+
+.eao__credits summary {
+  cursor: pointer;
+}
+
+.eao__hint {
+  left: var(--eao-edge);
+  bottom: calc(var(--eao-nav) + 0.5rem);
+}
+
+.eao__status {
+  right: var(--eao-edge);
+  bottom: calc(var(--eao-nav) + 0.5rem);
+  text-align: right;
+  font-weight: 600;
+  color: var(--eao-star);
+}
+
 .eao__failed {
   position: absolute;
-  inset: auto 0 0;
+  z-index: 2;
+  left: 50%;
+  bottom: calc(var(--eao-nav) + 2.5rem);
+  translate: -50%;
   margin: 0;
-  padding: 0.5rem;
+  padding: 0.5rem 0.75rem;
   background: rgb(28 15 38 / 85%);
 }
 
-.eao__info {
-  min-height: 3em;
-}
-
-.eao__credits,
-.eao__budget {
-  font-size: 0.8rem;
-  opacity: 0.75;
+.eao__budget.over {
+  color: #ff8a8a;
 }
 
 .eao__fps {
@@ -177,20 +302,64 @@
   background: rgb(0 0 0 / 75%);
 }
 
-.eao__budget.over {
-  color: #ff8a8a;
-  opacity: 1;
-}
-
+/* Phones and narrow windows: the record in the upper part, under the wordmark; below it one band above the
+   gallery navigation holds the presented member, or else the hint, status and credits. */
 @media (max-width: 52rem) {
   .eao {
-    grid-template-columns: minmax(0, 1fr);
+    --eao-edge: 1rem;
   }
 
-  .eao__cover {
-    /* Stacked: the full width, but short enough in landscape that the controls stay reachable. */
-    width: min(100%, 92vw, calc(100dvh - 2rem - var(--eao-nav)));
-    margin-inline: auto;
+  .eao__fore {
+    left: var(--eao-edge);
+    right: var(--eao-edge);
+    top: auto;
+    bottom: calc(var(--eao-nav) + 0.5rem);
+    translate: none;
+    width: auto;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .eao__band {
+    height: clamp(7rem, 20vh, 10rem);
+  }
+
+  .eao__mark {
+    max-width: none;
+  }
+
+  /* status, hint and credits stack in one column above the navigation */
+  .eao__foot {
+    position: absolute;
+    z-index: 2;
+    left: var(--eao-edge);
+    right: var(--eao-edge);
+    bottom: calc(var(--eao-nav) + 0.5rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .eao__foot .eao__corner {
+    position: static;
+    max-width: none;
+    text-align: left;
+  }
+
+  .eao__status {
+    order: -1;
+  }
+
+  /* a presented member takes the band */
+  .eao:has(.eao__fore[data-shown='true']) :is(.eao__credits, .eao__hint, .eao__status) {
+    opacity: 0;
+    visibility: hidden;
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .eao__corner,
+  .eao__fore {
+    transition: none;
+  }
+}

@@ -6,7 +6,8 @@
 // edge; a sliver always shows on the front so it reads as something to pull, and a mouse over the edge
 // makes it peek further. While the vinyl
 // is out the camera pulls back so the whole motion stays on the stage. Each frame also projects the DOM hit
-// zones: the sleeve's outline and the vinyl's edge (or the exposed disc).
+// zones: the sleeve's outline and the vinyl's edge (or the exposed disc), and shows the member's text while their
+// hero is presented.
 
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -14,11 +15,13 @@ import * as THREE from 'three/webgpu';
 import { MathUtils, Vector3 } from 'three/webgpu';
 import { color, float, length, mix, sin, uv, vec3 } from 'three/tsl';
 import { useKTX2Texture } from '../../../src/lib/ktx2.js';
-import { faceMaterial, MIRROR, mirrorMaterial, useReleaseOnUnmount } from './materials.js';
+import { faceMaterial, MIRROR, mirrorMaterial, BACKDROP, BIG, backdropMaterial, useReleaseOnUnmount } from './materials.js';
 import LAYERS from './layers.json';
 import { MEMBERS } from './members.js';
-import Diorama, { FRONT_Z, PULL_BACK, VIEW_DISTANCE } from './Diorama.jsx';
+import Diorama, { FRONT_Z, HALF_FOV_TAN, VIEW_DISTANCE } from './Diorama.jsx';
+import { OUT_SPAN, recordBox } from './frame.js';
 import { coastStep, FACES, TURN } from './turn.js';
+import { AUDIO, BPM } from './heroes.js';
 
 const BACK_URL = new URL('../public/back.ktx2', import.meta.url).href;
 const LABEL_URL = new URL('../public/label.ktx2', import.meta.url).href;
@@ -34,13 +37,16 @@ const SPIN = (33.3 / 60) * Math.PI * 2; // 33 1/3 rpm
 const TRAVEL = 1.15; // disc centre at full extraction: about 60 % of the disc out
 const PEEK = 0.16; // mouse over the edge: the disc comes out a little further
 const SLIVER = 0.085; // about 3 % of the disc stays visible while tucked in
-const ZONE = 0.26; // hit strip width (sleeve units) at rest: at least 44 CSS px on a 358 px phone stage
+const ZONE_PX = 44; // the tucked disc's hit strip: 44 CSS px wide on screen, no more (it reaches into the sleeve
+// only as far as that needs, so it stays off the members' sides on large screens; user, 10 Nov)
+const ZONE_MIN = 0.04; // sleeve units: never thinner than this inside the edge
 const approach = (v, target, dt, rate) => v + (target - v) * Math.min(1, dt * rate);
 const FLAT_FROM = 25; // deg from upright where the shadow box starts to flatten onto the sleeve
 const FLAT_TO = 45;
 // The sleeve's corners, for the projected hit polygon (preallocated: written every frame).
 const CORNERS = [-1, 1].flatMap((x) => [-1, 1].flatMap((y) => [-1, 1].map((z) => new Vector3(x, y, z * FRONT_Z))));
 const P = CORNERS.map(() => new Vector3());
+const STAR = new Vector3(); // the star's centre, projected for the backdrop star
 const ORDER = new Int8Array(8);
 const HULL = new Int8Array(9);
 const byX = (a, b) => P[a].x - P[b].x || P[a].y - P[b].y;
@@ -93,6 +99,16 @@ function hideQuad(pts) {
   }
 }
 
+/** The member whose title on the back is under `uv` (image top-left origin in layers.json), or null. */
+function titleAt(uv) {
+  if (!uv) return null;
+  const x = uv.x, y = 1 - uv.y;
+  return Object.keys(LAYERS.tracks).find((id) => {
+    const [x0, y0, x1, y1] = LAYERS.tracks[id];
+    return x >= x0 && x <= x1 && y >= y0 && y <= y1;
+  }) ?? null;
+}
+
 function useVinylMaterial() {
   return useMemo(() => {
     // Black vinyl with fine grooves and a soft sheen band; the label is a separate disc.
@@ -108,9 +124,9 @@ function useVinylMaterial() {
 /**
  * @param {{ face: 'front' | 'back', out: boolean, reduced: boolean, active: string | null, hoverable: boolean,
  *   spread: { current: number }, onHover: (id: string | null) => void, onSelect: (id: string) => void,
- *   onBlank: () => void }} props
+ *   onBlank: () => void, onBack: (id: string | null) => void }} props
  */
-export default function Record({ face, out, reduced, active, hoverable, spread, onHover, onSelect, onBlank }) {
+export default function Record({ face, out, reduced, active, hoverable, spread, onHover, onSelect, onBlank, onBack }) {
   const back = useKTX2Texture(BACK_URL);
   const label = useKTX2Texture(LABEL_URL);
   const spine = useKTX2Texture(SPINE_URL);
@@ -122,6 +138,7 @@ export default function Record({ face, out, reduced, active, hoverable, spread, 
       label: faceMaterial(label, { transparent: true }),
       spine: faceMaterial(spine),
       card: mirrorMaterial(fill, sdf, LAYERS.mirror), // the cover's star yellow + the infinity mirror
+      backdrop: backdropMaterial(), // the one big star behind the record
     }),
     [back, label, spine, fill, sdf],
   );
@@ -139,10 +156,22 @@ export default function Record({ face, out, reduced, active, hoverable, spread, 
   const flip = useRef();
   const disc = useRef();
   const spin = useRef();
-  const s = useRef({ rx: 0, ry: 0, out: 0, cam: 0 });
+  const s = useRef({ rx: 0, ry: 0, out: 0, cam: 0, w: 0, h: 0, box: null, beat: 0 });
   useFrame(({ pointer, camera, size }, delta) => {
     const dt = Math.min(delta, 0.05); // back from a hidden tab: no snap, no jump in the vinyl's spin
     const st = s.current;
+    // The page is the canvas: the sleeve at rest fills the rest box (recordBox), from the same distance as ever,
+    // so the layers' depth compensation and the heroes' registration hold. Only the frustum changes: the field of
+    // view scales the sleeve to the box and the view offset centres it there.
+    if (size.width !== st.w || size.height !== st.h) {
+      st.w = size.width;
+      st.h = size.height;
+      st.box = recordBox(size.width, size.height);
+      const { S, x, y } = st.box;
+      camera.fov = (2 * Math.atan((HALF_FOV_TAN * size.height) / S) * 180) / Math.PI;
+      camera.setViewOffset(size.width, size.height, size.width / 2 - x, size.height / 2 - y, size.width, size.height);
+      camera.updateProjectionMatrix();
+    }
     const rate = reduced ? 1e9 : 6;
     const k = reduced ? 1 : dt;
     const still = TURN.mode === 'idle' || TURN.mode === 'pending';
@@ -163,7 +192,7 @@ export default function Record({ face, out, reduced, active, hoverable, spread, 
     // The vinyl: followed directly while pulled by hand; otherwise out, peeking, a touch sliver or in.
     const pulling = TURN.zone === 'vinyl' && TURN.mode === 'drag';
     const settled = face === 'front' && still && near < 2; // extraction starts only once upright
-    const tucked = settled ? (TURN.peek ? PEEK : SLIVER) : 0;
+    const tucked = settled ? (TURN.peek || TURN.hint ? PEEK : SLIVER) : 0;
     st.out = pulling ? TURN.pull : approach(st.out, out ? 1 : tucked, k, reduced ? 1e9 : 4);
     TURN.shownOut = st.out;
     // The opening: the record arrives a little tilted and further back and settles in as the layers
@@ -185,17 +214,40 @@ export default function Record({ face, out, reduced, active, hoverable, spread, 
     if (tint) MIRROR.tint.value.set(tint);
     MIRROR.tintMix.value = approach(MIRROR.tintMix.value, tint ? 1 : 0, k, rate);
     if (!reduced) MIRROR.shimmer.value = (MIRROR.shimmer.value + dt * 1.6) % (Math.PI * 2); // the lights' shimmer runs
-    // Pull back with the vinyl, so sleeve + disc fit the square stage (a peek or a sliver makes a little room
-    // too: at rest the sleeve fills the stage), centred towards the side the disc comes out of: the sleeve's
-    // x axis faces the other way on the back.
+    // With the vinyl out, centre sleeve + disc, towards the side the disc comes out of (the sleeve's x axis faces
+    // the other way on the back), and pull back only as far as the page needs to fit them.
     const q = TURN.q;
     const cx = st.out * 0.57 * (1 - 2 * (q.y * q.y + q.z * q.z));
-    camera.position.set(cx, 0, VIEW_DISTANCE + FRONT_Z + st.out * PULL_BACK);
+    const pull = Math.max(0, VIEW_DISTANCE * ((OUT_SPAN * st.box.S) / st.box.room - 1));
+    camera.position.set(cx, 0, VIEW_DISTANCE + FRONT_Z + st.out * pull);
     camera.lookAt(cx, 0, 0);
     flip.current.updateWorldMatrix(true, false);
     camera.updateMatrixWorld();
     const m = flip.current.matrixWorld;
     flip.current.worldToLocal(MIRROR.cam.value.copy(camera.position)).z -= CARD_Z; // into the card's space
+    // The backdrop star sits on the record's star centre, at the record's scale (opening: pushed back, larger).
+    const [sx, sy] = LAYERS.mirror.centre;
+    const c = STAR.set(sx * 2 - 1, sy * 2 - 1, CARD_Z).applyMatrix4(m).project(camera);
+    BACKDROP.centre.value.set(((c.x + 1) / 2) * size.width, ((1 - c.y) / 2) * size.height);
+    BACKDROP.unit.value = ((st.box.S / 2) * VIEW_DISTANCE) / (VIEW_DISTANCE + st.out * pull + e * 0.9);
+    // Settled, the whole star stays on the page (user, 10 Nov: the top tip ran off): tip to lower tips (0.809 of
+    // the radius down) fits between margins at the top and bottom, and the star moves down off the record's star
+    // only as far as that needs. Its lower tips fall either side of the navigation's buttons.
+    const gap = 1.5 * st.box.rem;
+    const r = Math.min(BACKDROP.unit.value * BIG, (size.height - 2 * gap) / 1.809);
+    BACKDROP.unit.value = r / BIG;
+    BACKDROP.centre.value.y = MathUtils.clamp(BACKDROP.centre.value.y, gap + r, size.height - gap - 0.809 * r);
+    BACKDROP.view.value.set(size.width, size.height);
+    BACKDROP.rush.value = e;
+    // Its life: time, the beat (the song's, or a slow breath on the silent tempo), the disc for the sound rings.
+    const clock = AUDIO.playing ? AUDIO.clock?.() : null;
+    st.beat = clock ? clock.beat % 64 : (st.beat + (dt * BPM) / 60) % 64;
+    if (!reduced) BACKDROP.time.value = (BACKDROP.time.value + dt) % 1000;
+    BACKDROP.pulse.value = reduced ? 0 : clock ? Math.exp(-(st.beat % 1) * 5) : 0.25 - 0.25 * Math.cos((st.beat / 4) * Math.PI * 2);
+    BACKDROP.beat.value = st.beat;
+    BACKDROP.rings.value = approach(BACKDROP.rings.value, clock && out && !reduced ? 1 : 0, dt, 2);
+    const dc = STAR.set(st.out * TRAVEL, 0, 0).applyMatrix4(m).project(camera);
+    BACKDROP.disc.value.set(((dc.x + 1) / 2) * size.width, ((1 - dc.y) / 2) * size.height);
     if (TURN.hull) {
       for (let i = 0; i < 8; i++) P[i].copy(CORNERS[i]).applyMatrix4(m).project(camera);
       writeHull(size);
@@ -208,14 +260,28 @@ export default function Record({ face, out, reduced, active, hoverable, spread, 
     TURN.axisY = (-(b.y - ay) / 2) * size.height;
     // Hit zones. The vinyl's: its edge strip (extraction starts only on the settled front), or the exposed
     // disc once out (returning works from either face).
-    // The strip widens as the camera pulls back, so it keeps its 44 px on screen.
-    const zone = ZONE * (1 + (st.out * PULL_BACK) / (VIEW_DISTANCE + FRONT_Z));
+    // The strip is 44 px on screen in all: the exposed disc plus as little of the sleeve as that needs.
+    const edge = Math.max(1.02, st.out * TRAVEL + DISC);
+    const pxPerUnit = Math.hypot(TURN.axisX, TURN.axisY) / TRAVEL || 1;
+    const zone = Math.max(ZONE_MIN, ZONE_PX / pxPerUnit - (edge - 1));
     if (out || pulling || settled) {
-      writeQuad(TURN.vinylZone, st.out > 0.5 ? 1 : 1 - zone, Math.max(1.02, st.out * TRAVEL + DISC), DISC, m, camera, size);
+      writeQuad(TURN.vinylZone, st.out > 0.5 ? 1 : 1 - zone, edge, DISC, m, camera, size);
     } else hideQuad(TURN.vinylZone);
+    // The member's text (the page's left column) shows while their hero is presented: settled on the front,
+    // nobody handling the record.
+    const fore = TURN.fore;
+    if (fore) {
+      const shown = String(!!active && settled && spread.current >= 1);
+      if (fore.dataset.shown !== shown) fore.dataset.shown = shown;
+    }
   });
 
   return (
+    <>
+      {/* The page behind the record: drawn first, over the whole canvas. */}
+      <mesh name="eao-backdrop" material={mats.backdrop} renderOrder={-1} frustumCulled={false}>
+        <planeGeometry args={[2, 2]} />
+      </mesh>
     <group ref={tilt}>
       <group ref={flip}>
         <Diorama
@@ -231,7 +297,21 @@ export default function Record({ face, out, reduced, active, hoverable, spread, 
         <mesh name="eao-mirror" userData={{ sdf }} position={[0, 0, CARD_Z]} material={mats.card}>
           <planeGeometry args={[2, 2]} />
         </mesh>
-        <mesh position={[0, 0, -FRONT_Z]} rotation={[0, Math.PI, 0]} material={mats.back}>
+        {/* Karu's back: a click on one of the five assigned titles picks that member (layers.json tracks);
+            anywhere else returns an extracted disc. Only while the back is the face shown. */}
+        <mesh
+          position={[0, 0, -FRONT_Z]}
+          rotation={[0, Math.PI, 0]}
+          material={mats.back}
+          onClick={
+            face === 'back'
+              ? (e) => {
+                  e.stopPropagation();
+                  onBack(titleAt(e.uv));
+                }
+              : undefined
+          }
+        >
           <planeGeometry args={[2, 2]} />
         </mesh>
         {/* Closed edges carry Karu's spine; the right edge is the open one the vinyl leaves by. */}
@@ -263,5 +343,6 @@ export default function Record({ face, out, reduced, active, hoverable, spread, 
         </group>
       </group>
     </group>
+    </>
   );
 }

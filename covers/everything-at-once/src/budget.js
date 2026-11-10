@@ -18,6 +18,10 @@
 // textures 17; Javi selected calls 33, triangles 14733, geometries 27, textures 18.
 // 8 Nov, the star's infinity mirror (the card's material: no new draw; + the R8 star SDF): rest calls 16,
 // triangles 343, geometries 16, textures 18; Javi selected calls 33, triangles 14733, geometries 27, textures 19.
+// 10 Nov, the full-page backdrop (one full-screen quad behind the record: one big analytic star, no texture): +1 call and
+// +1 geometry in every state, +0 textures. The canvas is now the viewport, so hero parts beyond the sleeve's edge are
+// no longer culled (Javi's controller): rest calls 17, triangles 345, geometries 17, textures 18; Javi selected
+// calls 38, triangles 15071, geometries 28, textures 19 (Lucy/Pavlo 26, Andrés 22, Guille 21 calls).
 
 /** @type {import('../../../src/lib/types.js').Ceiling | null} */
-export const CEILING = { calls: 33, triangles: 25000, geometries: 27, textures: 19 };
+export const CEILING = { calls: 38, triangles: 25000, geometries: 28, textures: 19 };

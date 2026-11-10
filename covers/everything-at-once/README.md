@@ -4,7 +4,7 @@ The cover of Texas Red's album *Everything at Once* as an interactive record: a 
 
 Run it with `npm run dev` from the repository root, then open `/covers/everything-at-once`.
 
-Cover and illustrations: Karu. 3D scene: Guille (Texas Red). Used with permission. Third-party model credits are in the route's credits panel and in [`docs/ktx2-note.md`](docs/ktx2-note.md).
+All illustrations, cover included: [Karu](https://www.linkedin.com/in/laura-carvajal-martin/). All 3D work: [Guille](https://www.linkedin.com/in/guillermo-sirera-738752225/) (Texas Red). Used with permission. Third-party model credits are in the route's credits panel and in [`docs/ktx2-note.md`](docs/ktx2-note.md).
 
 ## Evidence
 

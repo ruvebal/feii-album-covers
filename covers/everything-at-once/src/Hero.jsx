@@ -460,6 +460,17 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
     // just comes closer. No turn (user, 7 Nov).
     const e = lift * lift * (3 - 2 * lift);
     tmpM.makeTranslation(tmpV.copy(R.toCamera).multiplyScalar(R.size * (spec.rise ?? RISE) * e + hop));
+    if (spec.shrink) {
+      // A prop much larger than the sleeve shrinks as it rises, towards where it enters the sleeve (sleeve units on
+      // the front), so on the full-page canvas it pokes out without covering the page (user, 10 Nov). It lands at
+      // the drawing's size.
+      const { to, at } = spec.shrink;
+      const k = 1 + (to - 1) * e;
+      tmpM
+        .multiply(tmpT.makeTranslation(at[0], at[1], frontZ))
+        .multiply(tmpQM.makeScale(k, k, k))
+        .multiply(tmpT.makeTranslation(-at[0], -at[1], -frontZ));
+    }
     // At the handoff: the image-space fit onto Karu's ink, exact for the head-on camera (rotation and scale
     // about the optical axis, shift as a shear along the view). It relaxes as the hero rises.
     const f = 1 - e;

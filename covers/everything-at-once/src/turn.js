@@ -52,12 +52,14 @@ export const TURN = {
   dragX: 1, // ... frozen when a pull starts: the camera pulls back as the disc comes out, which would
   dragY: 0, // otherwise shrink the path under the pointer and run the disc ahead of it
   peek: false, // a mouse over the vinyl edge: the disc peeks out
+  hint: false, // the first visit's guidance: the disc peeks out by itself (Route's Opening drives it)
+  fore: null, // the member foreground's element: Record writes whether it shows
   hull: null, // the DOM hit polygons' point lists (Route binds them, Record writes them each frame)
   vinylZone: null,
 };
 
 export function resetTurn(face = 'front') {
-  Object.assign(TURN, { mode: 'idle', id: -1, yaw: 0, vx: 0, vy: 0, coast: 0, flat: 1, startFace: face, zone: 'sleeve', peek: false });
+  Object.assign(TURN, { mode: 'idle', id: -1, yaw: 0, vx: 0, vy: 0, coast: 0, flat: 1, startFace: face, zone: 'sleeve', peek: false, hint: false });
   TURN.q.copy(FACES[face]);
   TURN.target.copy(FACES[face]);
 }

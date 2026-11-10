@@ -5,8 +5,8 @@ import { useLoader } from '@react-three/fiber';
 import * as THREE from 'three/webgpu';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import {
-  atan, color, float, Fn, fwidth, If, Loop, mx_fractal_noise_float, positionLocal, pow, sin, texture, uniform, uv, vec2, vec3, vec4,
-  max, mix, smoothstep, step,
+  atan, color, float, Fn, fwidth, If, Loop, mx_fractal_noise_float, positionGeometry, positionLocal, pow, screenUV, sin, texture, uniform,
+  uv, vec2, vec3, vec4, length, max, mix, sign, smoothstep, step,
 } from 'three/tsl';
 
 /**
@@ -131,6 +131,29 @@ const LINE = 0.9; // half the echo's ink width, in SDF texels
 const LIGHT = 1.4; // a light's bright core radius, in SDF texels (its halo reaches the field's `dot` range)
 
 /**
+ * One echo of her star at card uv `q`, for the mirror: the outline's coverage on the purple
+ * (`ink`) and the misregistered magenta plate (`mis`, offset by `reg` in uv), its lights (`core`, `glow`, with the
+ * shimmer running around the star and down the echoes) and the signed distance `d` (texels, + inside).
+ * `aa` = SDF texels per screen pixel at that echo; `k` = the echo's index, from 1.
+ */
+function starEcho(sdf, { range, dot, centre }, q, k, aa, reg) {
+  const signed = (v) => v.mul(255).sub(128).mul(range / 127);
+  const line = (d) => smoothstep(LINE, aa.add(LINE), d.abs()).oneMinus();
+  const f = texture(sdf, q);
+  const d = signed(f.r);
+  const around = atan(q.y.sub(centre[1]), q.x.sub(centre[0]));
+  const twinkle = sin(around.mul(5).add(MIRROR.shimmer).sub(k.mul(0.8))).mul(0.4).add(0.6);
+  const ld = f.g.mul(dot);
+  return {
+    d,
+    ink: line(d),
+    mis: line(signed(texture(sdf, q.add(reg)).r)),
+    core: smoothstep(LIGHT, aa.add(LIGHT), ld).oneMinus().mul(twinkle),
+    glow: ld.div(dot).oneMinus().clamp(0, 1).pow(2).mul(twinkle),
+  };
+}
+
+/**
  * The card under the layers: the cover's star yellow (`fill`) with receding star-outline echoes, as if the star
  * were a window into a mirror box. Echo k casts the camera -> fragment ray down to DEPTH(k) and reads the
  * star's signed distance there, so the echoes shrink with perspective and slide sideways as the sleeve tilts.
@@ -146,14 +169,13 @@ const LIGHT = 1.4; // a light's bright core radius, in SDF texels (its halo reac
  *   outline); G distance to the nearest light, 0..`dot`
  * @param {{ size: number, range: number, dot: number, centre: number[] }} spec layers.json `mirror`
  */
-export function mirrorMaterial(fill, sdf, { size, range, dot, centre }) {
+export function mirrorMaterial(fill, sdf, spec) {
+  const { size, range, centre } = spec;
   // KTX2Loader makes uncompressed data a nearest-filtered DataTexture: the echoes need the distance interpolated.
   sdf.minFilter = sdf.magFilter = THREE.LinearFilter;
   sdf.needsUpdate = true;
   const m = new THREE.MeshBasicNodeMaterial();
-  const field = (q) => texture(sdf, q);
-  const signed = (v) => v.mul(255).sub(128).mul(range / 127); // texels, + inside
-  const dist = (q) => signed(field(q).r);
+  const dist = (q) => texture(sdf, q).r.mul(255).sub(128).mul(range / 127); // texels, + inside
   m.colorNode = Fn(() => {
     const a = MIRROR.amount;
     const p = positionLocal.xy;
@@ -181,19 +203,13 @@ export function mirrorMaterial(fill, sdf, { size, range, dot, centre }) {
       const onCard = step(0, q.x).mul(step(q.x, 1)).mul(step(0, q.y)).mul(step(q.y, 1)).mul(inStar);
       const aa = px.mul(t.add(1)); // an echo's texels per pixel grow with its depth
       const weight = pow(float(FALL), k.sub(1)).mul(onCard).mul(a);
-      const line = (d) => smoothstep(LINE, aa.add(LINE), d.abs()).oneMinus();
-      const f = field(q);
-      const d = signed(f.r);
-      // Lights: the shimmer travels around the star and inwards, down the tunnel.
-      const around = atan(q.y.sub(centre[1]), q.x.sub(centre[0]));
-      const twinkle = sin(around.mul(5).add(MIRROR.shimmer).sub(k.mul(0.8))).mul(0.4).add(0.6);
-      const lit = pow(float(FALL), k.sub(1)).mul(onCard).mul(twinkle);
-      const ld = f.g.mul(dot);
-      core.addAssign(smoothstep(LIGHT, aa.add(LIGHT), ld).oneMinus().mul(lit));
-      glow.addAssign(ld.div(dot).oneMinus().clamp(0, 1).pow(2).mul(lit));
-      purple.mulAssign(float(1).sub(line(d).mul(weight)));
-      magenta.mulAssign(float(1).sub(line(dist(q.add(reg))).mul(weight).mul(0.7)));
-      deep.addAssign(smoothstep(-0.5, 0.5, d).mul(onCard));
+      const e = starEcho(sdf, spec, q, k, aa, reg);
+      const lit = pow(float(FALL), k.sub(1)).mul(onCard);
+      core.addAssign(e.core.mul(lit));
+      glow.addAssign(e.glow.mul(lit));
+      purple.mulAssign(float(1).sub(e.ink.mul(weight)));
+      magenta.mulAssign(float(1).sub(e.mis.mul(weight).mul(0.7)));
+      deep.addAssign(smoothstep(-0.5, 0.5, e.d).mul(onCard));
     });
     const printed = texture(fill, uv())
       .rgb.mul(mix(vec3(1), color('#e2477e'), magenta.oneMinus()))
@@ -203,6 +219,113 @@ export function mirrorMaterial(fill, sdf, { size, range, dot, centre }) {
     const light = color('#ff9fd0').mul(glow.mul(0.65)).add(vec3(core)).mul(a).min(1);
     const lights = vec3(1).sub(vec3(1).sub(printed).mul(vec3(1).sub(light)));
     return vec4(recede(lights, RECEDE), 1);
+  })();
+  return m;
+}
+
+/** The page behind the record (Record.jsx writes these every frame). */
+export const BACKDROP = {
+  centre: uniform(new THREE.Vector2()), // the star's centre on screen, CSS px from the top left
+  unit: uniform(100), // CSS px per sleeve unit at the record's distance
+  view: uniform(new THREE.Vector2(1, 1)), // the canvas, CSS px
+  rush: uniform(0), // the opening: 1 = the star starts 1.6x larger, 0 = settled
+  time: uniform(0), // s, for the sparkles, dust and grain (held still under reduced motion)
+  pulse: uniform(0), // 0..1: the star's beat (a kick per beat with a song, a slow breath in silence)
+  beat: uniform(0), // the song's beat position: one sound ring leaves the disc per beat
+  rings: uniform(0), // 0..1: the sound rings' strength (the vinyl out and playing)
+  disc: uniform(new THREE.Vector2()), // the disc's centre on screen, CSS px
+};
+const SPARKS = 12; // Karu's four-point glints around the star
+const DUST = 28; // specks drifting up
+const RING_GAP = 90; // px between sound rings
+/** A repeatable random number in 0..1 from a float. */
+const hash = (n) => sin(n.mul(12.9898)).mul(43758.5453).fract();
+const BACKDROP_REST = 0.35; // the star's strength at rest (the mirror's amount lifts it to 1)
+export const BIG = 1.5; // the background star's tip radius, in sleeve units (the sleeve is 2 x 2)
+const K1 = vec2(0.809016994375, -0.587785252292); // cos / sin of 36 deg: the star's fold axes
+
+/** Signed distance (+ outside) to a regular five-point star with straight edges, tip up, tip radius `r`;
+ *  `rf` sets how deep its inner corners sit. Inigo Quilez's sdStar5, in TSL. */
+const sdStar = Fn(([p0, r, rf]) => {
+  const p = vec2(p0.x.abs(), p0.y).toVar();
+  p.subAssign(K1.mul(max(p.dot(K1), 0).mul(2)));
+  const k2 = vec2(K1.x.negate(), K1.y);
+  p.subAssign(k2.mul(max(p.dot(k2), 0).mul(2)));
+  p.assign(vec2(p.x.abs(), p.y.sub(r)));
+  const ba = vec2(0.587785252292, 0.809016994375).mul(rf).sub(vec2(0, 1));
+  const h = p.dot(ba).div(ba.dot(ba)).clamp(0, r);
+  return length(p.sub(ba.mul(h))).mul(sign(p.y.mul(ba.x).sub(p.x.mul(ba.y))));
+});
+
+/**
+ * The page behind the record: one large regular star with straight edges (the infinity stays inside the record:
+ * user, 10 Nov), centred on the record's star and following it as the record moves. A full-screen quad drawn
+ * first, behind the opaque sleeve: her star's yellow (or the selected member's tint) over a misregistered magenta
+ * plate, a soft halo, and a shimmer running around it, on the cover's night. To keep the page alive (user, 10 Nov):
+ * the star pulses on the beat, Karu's four-point glints twinkle around it, a riso halftone and paper grain drift
+ * over the night, dust floats up, and with the record playing sound rings ripple out from the disc. No texture.
+ */
+export function backdropMaterial() {
+  const m = new THREE.MeshBasicNodeMaterial({ depthTest: false, depthWrite: false });
+  m.vertexNode = vec4(positionGeometry.xy, 0, 1); // the quad is the clip rect: always the whole canvas
+  m.colorNode = Fn(() => {
+    const a = MIRROR.amount.mul(1 - BACKDROP_REST).add(BACKDROP_REST);
+    const s = screenUV; // top-left origin
+    const p = s.mul(BACKDROP.view).sub(BACKDROP.centre).mul(vec2(1, -1)); // CSS px from the star's centre, y up
+    const r = BACKDROP.unit.mul(BIG).mul(BACKDROP.rush.mul(0.6).add(1));
+    const d = sdStar(p, r, float(0.5));
+    const line = (x) => smoothstep(1.2, 2.2, x.abs()).oneMinus(); // ~2.4 px of ink
+    const ink = line(d);
+    const mis = line(sdStar(p.add(vec2(-2.5, 1.7).mul(a.add(0.5))), r, float(0.5)));
+    const around = atan(p.y, p.x);
+    const shimmer = sin(around.mul(5).add(MIRROR.shimmer)).mul(0.25).add(0.75);
+    const halo = d.abs().div(-28).exp().mul(0.22).mul(shimmer);
+    const px = s.mul(BACKDROP.view);
+    const t = BACKDROP.time;
+    const night = color('#1c0f26');
+    const tint = mix(color('#ffe489'), MIRROR.tint, MIRROR.tintMix);
+    // The ground: Karu's riso print. A 45 deg halftone in magenta whose dots swell and shrink with a slow noise,
+    // and a fixed paper grain.
+    const hv = vec2(px.x.add(px.y), px.y.sub(px.x)).mul(0.7071).div(7);
+    const swell = mx_fractal_noise_float(vec3(px.mul(0.004), t.mul(0.05)), 2, 2, 0.5).mul(0.22).add(0.16).clamp(0, 0.45);
+    const dotty = smoothstep(swell.sub(0.06), swell, length(hv.fract().sub(0.5))).oneMinus();
+    const grain = sin(px.dot(vec2(12.9898, 78.233))).mul(43758.5453).fract().sub(0.5).mul(0.02);
+    const ground = mix(night, color('#e2477e'), dotty.mul(0.07)).add(grain);
+    // The star, kicked by the beat.
+    const beat = BACKDROP.pulse;
+    const c = mix(ground, color('#e2477e'), mis.mul(a).mul(0.6));
+    const star = mix(c, tint, ink.mul(a).mul(shimmer).mul(beat.mul(0.5).add(1)).min(1)).add(tint.mul(halo.mul(a).mul(beat.mul(1.5).add(1))));
+    // Sound rings: one leaves the disc per beat, fading with distance.
+    const dr = length(px.sub(BACKDROP.disc));
+    const f = dr.div(RING_GAP).sub(BACKDROP.beat).fract();
+    const w = 1.6 / RING_GAP;
+    const ring = smoothstep(0, w, f).oneMinus().add(smoothstep(1 - w, 1, f)).mul(dr.div(-420).exp()).mul(BACKDROP.rings);
+    // Dust drifting up, swaying a little.
+    const dust = float(0).toVar();
+    Loop(DUST, ({ i }) => {
+      const n = float(i).add(40);
+      const y = hash(n.add(5.5)).sub(t.mul(hash(n.add(2.2)).mul(0.02).add(0.008))).fract();
+      const x = hash(n.add(9.1)).add(sin(t.mul(0.3).add(n)).mul(0.01)).fract();
+      const r = length(s.sub(vec2(x, y)).mul(BACKDROP.view));
+      dust.addAssign(smoothstep(0.4, 2.2, r).oneMinus().mul(hash(n.add(4.4)).mul(0.5).add(0.3)));
+    });
+    // Karu's glints: two thin arms and a bright core, each twinkling on its own slow clock.
+    const spark = float(0).toVar();
+    Loop(SPARKS, ({ i }) => {
+      const n = float(i);
+      const d = px.sub(vec2(hash(n.add(1.3)), hash(n.add(7.7))).mul(BACKDROP.view)).abs();
+      const arm = hash(n.add(3.1)).mul(14).add(10);
+      const glint = d.x.div(arm).add(d.y.div(1.2)).negate().exp()
+        .add(d.y.div(arm).add(d.x.div(1.2)).negate().exp())
+        .add(length(d).div(2.5).negate().exp());
+      const twinkle = pow(max(sin(t.mul(hash(n.add(6.6)).mul(0.9).add(0.5)).add(hash(n.add(8.8)).mul(6.283))), 0), 6);
+      spark.addAssign(glint.mul(twinkle));
+    });
+    const lit = star
+      .add(tint.mul(ring.mul(0.3)))
+      .add(mix(color('#ffc9e4'), tint, MIRROR.tintMix).mul(dust.mul(0.3)))
+      .add(color('#fff6d8').mul(spark.mul(0.75)));
+    return vec4(recede(lit.min(1), RECEDE), 1);
   })();
   return m;
 }
