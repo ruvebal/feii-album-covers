@@ -50,6 +50,7 @@ export function createTransport(onStatus) {
   let song = INTERLUDE;
   let seq = 0; // the latest sync wins over slower loads
   let cur = null; // { song, src, gain, at, offset, buffer }
+  const beatClock = { bpm: 0, beat: 0 }; // clock()'s answer, reused: it is read every frame
   let master = null; // silent while the record is in, so unlocking early never sounds
   let resuming = false; // a resume is in flight: loading, not blocked (yet)
   let hush = 0;
@@ -184,14 +185,16 @@ export function createTransport(onStatus) {
     },
     /**
      * The audible song's tempo and beat (beats into its loop, as heard: output latency taken off), or null
-     * while nothing plays.
+     * while nothing plays. The same object every call: read it, don't keep it.
      * @returns {{ bpm: number, beat: number } | null}
      */
     clock() {
       if (!cur || !on || ctx?.state !== 'running') return null;
       const heard = ctx.currentTime - (ctx.outputLatency || ctx.baseLatency || 0);
       const pos = (((cur.offset + heard - cur.at) % cur.buffer.duration) + cur.buffer.duration) % cur.buffer.duration;
-      return { bpm: BPM[cur.song], beat: (pos * BPM[cur.song]) / 60 };
+      beatClock.bpm = BPM[cur.song];
+      beatClock.beat = (pos * BPM[cur.song]) / 60;
+      return beatClock;
     },
     /** The songs with a live source right now, fading ones included (for the route checks). */
     sounding: () => [...live.values()],

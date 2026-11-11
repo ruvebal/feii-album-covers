@@ -40,12 +40,17 @@ const SLIVER = 0.085; // about 3 % of the disc stays visible while tucked in
 const ZONE_PX = 44; // the tucked disc's hit strip: 44 CSS px wide on screen, no more (it reaches into the sleeve
 // only as far as that needs, so it stays off the members' sides on large screens; user, 10 Nov)
 const ZONE_MIN = 0.04; // sleeve units: never thinner than this inside the edge
-const approach = (v, target, dt, rate) => v + (target - v) * Math.min(1, dt * rate);
+// Lands exactly on the target: the mirror's amount > 0 switches on its echo loop (materials.js).
+const approach = (v, target, dt, rate) => {
+  const n = v + (target - v) * Math.min(1, dt * rate);
+  return Math.abs(target - n) < 1e-4 ? target : n;
+};
 const FLAT_FROM = 25; // deg from upright where the shadow box starts to flatten onto the sleeve
 const FLAT_TO = 45;
 // The sleeve's corners, for the projected hit polygon (preallocated: written every frame).
 const CORNERS = [-1, 1].flatMap((x) => [-1, 1].flatMap((y) => [-1, 1].map((z) => new Vector3(x, y, z * FRONT_Z))));
 const P = CORNERS.map(() => new Vector3());
+const TINTS = Object.fromEntries(MEMBERS.map((mb) => [mb.id, mb.tint])); // read every frame: no search there
 const STAR = new Vector3(); // the star's centre, projected for the backdrop star
 const ORDER = new Int8Array(8);
 const HULL = new Int8Array(9);
@@ -210,7 +215,7 @@ export default function Record({ face, out, reduced, active, spread, onHover, on
     const tiltSpeed = Math.hypot(st.rx - rx0, st.ry - ry0) / Math.max(dt, 1e-3); // rad/s
     const motion = Math.min(1, Math.max(near / 20, e, tiltSpeed / 0.15));
     MIRROR.amount.value = reduced ? REST : approach(MIRROR.amount.value, REST + (1 - REST) * motion, dt, 5);
-    const tint = MEMBERS.find((mb) => mb.id === active)?.tint;
+    const tint = TINTS[active];
     if (tint) MIRROR.tint.value.set(tint);
     MIRROR.tintMix.value = approach(MIRROR.tintMix.value, tint ? 1 : 0, k, rate);
     if (!reduced) MIRROR.shimmer.value = (MIRROR.shimmer.value + dt * 1.6) % (Math.PI * 2); // the lights' shimmer runs
@@ -278,8 +283,9 @@ export default function Record({ face, out, reduced, active, spread, onHover, on
 
   return (
     <>
-      {/* The page behind the record: drawn first, over the whole canvas. */}
-      <mesh name="eao-backdrop" material={mats.backdrop} renderOrder={-1} frustumCulled={false}>
+      {/* The page behind the record: over the whole canvas, behind everything (depth), drawn after the opaque
+          record and before the transparent layers, so the pixels the record hides are never shaded. */}
+      <mesh name="eao-backdrop" material={mats.backdrop} renderOrder={1000} frustumCulled={false}>
         <planeGeometry args={[2, 2]} />
       </mesh>
     <group ref={tilt}>

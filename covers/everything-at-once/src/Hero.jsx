@@ -13,6 +13,8 @@ import * as THREE from 'three/webgpu';
 import { Box3, MathUtils, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
 import {
   float,
+  Fn,
+  If,
   instanceIndex,
   instancedBufferAttribute,
   mix,
@@ -109,17 +111,23 @@ function puffs({ mesh, alpha, n, points }, embers, time, level, glow) {
  *  ember texels (the cigarettes); `glint` = [lo, size] of the mesh's local box adds the sweeping highlight;
  *  `pressed` darkens each mesh by its own userData.pressed (0..1, the controller's buttons). */
 function heroMaterial(map, shift, show, glow, glint, pressed = false) {
-  const d = vec2(shift, shift.mul(0.6));
-  const r = texture(map, uv().add(d));
+  // The red and blue taps move only while the riso shift kicks (> 0); at 0 one tap is the same pixel.
   const g = texture(map, uv());
-  const b = texture(map, uv().sub(d));
+  const shifted = Fn(() => {
+    const c = g.rgb.toVar();
+    If(shift.greaterThan(0), () => {
+      const d = vec2(shift, shift.mul(0.6));
+      c.assign(vec3(texture(map, uv().add(d)).r, g.g, texture(map, uv().sub(d)).b));
+    });
+    return c;
+  })();
   // Unlit: the shading is painted in Karu's style. Double-sided as the GLB says (the recess's back wall is
   // a single outward-facing surface).
   const m = new THREE.MeshBasicNodeMaterial({
     side: THREE.DoubleSide,
     transparent: true,
   });
-  let rgb = vec3(r.r, g.g, b.b);
+  let rgb = shifted;
   if (glow) {
     // The ember: the painted red ring and the red specks on the ash are the only texels that are bright red with
     // almost no green or blue (linear); they breathe with `glow`.
@@ -417,7 +425,7 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
     const phase = s.beat % 1;
     const pulse = Math.max(0, Math.sin(phase * Math.PI)) ** 4 * perf;
     // Parts that hop in turn (the cigarettes, up off the page in model units) or the whole hero (the metronome).
-    R.bob.forEach((b, i) => (b.o.position.y = b.y + (Math.floor(s.beat) % R.bob.length === i ? pulse * BOB : 0)));
+    for (let i = 0; i < R.bob.length; i++) R.bob[i].o.position.y = R.bob[i].y + (Math.floor(s.beat) % R.bob.length === i ? pulse * BOB : 0);
     const hop = R.bob.length ? 0 : pulse * 0.02;
     BEAT[name] = AUDIO.playing ? (1 - phase) ** 6 * 0.004 * perf : 0; // the riso kick only with the music on
     // The arms open over one beat and fold back over the next.
@@ -441,7 +449,8 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
     if (R.presses.length) {
       const hit = AUDIO.playing && !reduced ? Math.floor(s.beat) % R.presses.length : -1;
       const env = phase < 0.12 ? phase / 0.12 : phase < 0.45 ? 1 : Math.max(0, 1 - (phase - 0.45) / 0.3);
-      R.presses.forEach((p, i) => {
+      for (let i = 0; i < R.presses.length; i++) {
+        const p = R.presses[i];
         const k = i === hit ? env * perf : 0;
         if (p.dpad) {
           const arm = Math.floor(s.beat / R.presses.length) % 4;
@@ -449,7 +458,7 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
           p.o.quaternion.copy(p.restQ).multiply(tmpQ.setFromAxisAngle(arm % 2 ? Y_AXIS : X_AXIS, a));
         } else p.o.position.copy(p.rest).addScaledVector(p.dir, k * p.depth);
         if (p.mesh) p.mesh.userData.pressed = k;
-      });
+      }
     }
     if (R.stick) {
       // the controller's up is the pivot's local z after export, so it tilts about x and y (z only spins it)

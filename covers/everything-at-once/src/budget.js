@@ -26,6 +26,10 @@
 // hitch). Geometries and textures are counts of what is resident, so the ceiling is the worst case: all five
 // heroes visited (Javi, Lucy, Pavlo, Andrés, Guille): geometries 44, textures 23. Calls and triangles are per
 // frame and unchanged. The back face is now UASTC (task3): same count, same GPU bytes as ETC1S on BC7.
+// 11 Nov, frame-rate pass: each diorama layer's quad spans only its art (layers.json `box`) and is shared with its
+// ghost; a lifted side draws on a wider box of its own (made on first lift). Rest geometries 11; all five heroes
+// visited 22 → 27 → 32 → 35 → 38.
+// Calls, triangles and textures unchanged (rest 17 / 345 / 18; Javi 38 calls, Guille 24,661 triangles).
 
 /** @type {import('../../../src/lib/types.js').Ceiling | null} */
-export const CEILING = { calls: 38, triangles: 25000, geometries: 44, textures: 23 };
+export const CEILING = { calls: 38, triangles: 25000, geometries: 38, textures: 23 };

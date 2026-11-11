@@ -8,7 +8,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Vector4 } from 'three/webgpu';
+import { PlaneGeometry, Vector4 } from 'three/webgpu';
 import { uniform } from 'three/tsl';
 import { useKTX2Texture } from '../../../src/lib/ktx2.js';
 import { layerMaterial, RECEDE, useReleaseOnUnmount } from './materials.js';
@@ -58,6 +58,18 @@ const approach = (v, target, dt, rate) => {
   return Math.abs(target - n) < 1e-4 ? target : n;
 };
 
+/** The layer's quad: only the part of the sleeve's square (-1..1) its art covers (layers.json `box`, uv, v up),
+ *  with the same uv there as the full square, so the GPU skips the transparent rest and the picture is the same. */
+function boxPlane([u0, v0, u1, v1] = [0, 0, 1, 1]) {
+  const g = new PlaneGeometry((u1 - u0) * 2, (v1 - v0) * 2).translate(u0 + u1 - 1, v0 + v1 - 1, 0);
+  const uv = g.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, u0 + uv.getX(i) * (u1 - u0), v0 + uv.getY(i) * (v1 - v0));
+  return g;
+}
+
+const LIFT_PAD = 0.06; // uv, on top of the box's own 0.04
+const padBox = ([u0, v0, u1, v1], d) => [Math.max(0, u0 - d), Math.max(0, v0 - d), Math.min(1, u1 + d), Math.min(1, v1 + d)];
+
 function Layer({ name, active, spread, reduced }) {
   const map = useKTX2Texture(URLS[name]);
   // Sides without a hero load their own art again here (the loader's cache returns the same texture).
@@ -77,6 +89,13 @@ function Layer({ name, active, spread, reduced }) {
   );
   useReleaseOnUnmount(plate ? [URLS[name], PLATES[name]] : [URLS[name]], plate ? [map, plate] : [map]);
   const info = LAYERS[name] ?? { depth: 0, anchor: [0.5, 0.5] };
+  // A lifted side draws on a wider box: its torn edge and shadow sample mips 3-4, whose spread past the art grows as
+  // the record gets smaller on screen. LIFT_PAD holds the shadow's footprint down to a ~256 px sleeve.
+  const geo = useMemo(() => boxPlane(info.box), [info.box]);
+  const liftGeo = useMemo(() => boxPlane(info.box && padBox(info.box, LIFT_PAD)), [info.box]);
+  useEffect(() => () => liftGeo.dispose(), [liftGeo]);
+  const side = useRef();
+  useEffect(() => () => geo.dispose(), [geo]);
   const [ax, ay] = [(info.anchor[0] - 0.5) * 2, (info.anchor[1] - 0.5) * 2];
   const pivot = useRef();
   const ghost = useRef();
@@ -123,26 +142,23 @@ function Layer({ name, active, spread, reduced }) {
     const hi = (e, a) => ((comp - e) / S + a + 1) / 2;
     U[name].clip.value.set(lo(ax * comp, ax), lo(ay * comp, ay), hi(ax * comp, ax), hi(ay * comp, ay));
     U[name].lift.value = (st.lift / LIFT) * f;
+    side.current.geometry = U[name].lift.value > 0 ? liftGeo : geo;
     // The ghost stays at the rest pose (just behind the lifted piece) while this side is up.
     const g = ghost.current;
     const zr = FRONT_Z + 0.001 + info.depth * DEPTH * spread.current * f;
     const cr = (VIEW_DISTANCE + FRONT_Z - zr) / VIEW_DISTANCE;
     g.visible = st.lift > 0.0005;
     g.position.set(0, 0, zr - 0.0005);
-    g.scale.setScalar(cr); // at rest the plane spans exactly the sleeve square: its clip stays the full uv rect
+    g.scale.setScalar(cr); // at rest it sits exactly on the sleeve square (its box of it): its clip stays the full uv rect
   });
 
   const order = 1 + Math.round(info.depth * 10);
   return (
     <>
-      <mesh ref={ghost} material={ghostMat} renderOrder={order} visible={false}>
-        <planeGeometry args={[2, 2]} />
-      </mesh>
+      <mesh ref={ghost} geometry={geo} material={ghostMat} renderOrder={order} visible={false} />
       <group ref={pivot}>
         {/* Transparent layers draw in this order: the selected side goes over every other side. */}
-        <mesh position={[-ax, -ay, 0]} material={mat} renderOrder={active === name ? 100 : order}>
-          <planeGeometry args={[2, 2]} />
-        </mesh>
+        <mesh ref={side} position={[-ax, -ay, 0]} geometry={geo} material={mat} renderOrder={active === name ? 100 : order} />
         {HEROES[name] && (
           <Hero
             name={name}

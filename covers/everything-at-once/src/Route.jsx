@@ -25,7 +25,14 @@ import RouteBudgetProbe from './RouteBudgetProbe.jsx';
 import { move, press, release, resetTurn, TURN } from './turn.js';
 import './route.css';
 
-const DPR = [1, 1.5]; // the canvas fills the viewport: drops to 1 if the frame rate falls (PerformanceMonitor)
+// The canvas fills the viewport: the device's ratio, capped at 1.5, and stepped down to 1.25, then 1 while the
+// frame rate stays under 55 fps (PerformanceMonitor). Down only: stepping back up made a borderline GPU flip
+// between sizes, and drei counts every step up as a flip-flop, even at the top. Never under 1: weak GPUs stay sharp.
+const DPR = [1, 1.5];
+const dprFor = ({ factor }) => [1, 1 + Math.round(factor * 2) / 4];
+// Under 55 fps whatever the display's rate (drei's default band for 60 Hz screens is 40..60: a page at 45 fps never
+// stepped down); never up.
+const FPS_BOUNDS = () => [55, Infinity];
 const POSTER_URL = new URL('../public/poster.jpg', import.meta.url).href;
 const OPENING_KEY = 'everything-at-once:opened'; // the opening (and its guidance) plays once per browser session
 // Archivo (OFL, public/fonts/OFL.txt), self-hosted subsets from scripts/fonts.py: the copy at normal width, and
@@ -231,7 +238,6 @@ function CoverRoute() {
     return () => {
       resetTurn();
       document.documentElement.classList.remove('route-everything-at-once');
-      document.body.style.cursor = 'auto';
     };
   }, []);
   useEffect(() => {
@@ -417,7 +423,7 @@ function CoverRoute() {
               </Suspense>
               <Opening spreadRef={spread} runningRef={opening} guideRef={guide} />
               <RouteBudgetProbe onSample={setBudget} fps={fps} debug={debug} />
-              <PerformanceMonitor onDecline={() => setDpr(1)} />
+              <PerformanceMonitor factor={1} step={0.5} bounds={FPS_BOUNDS} onChange={(m) => setDpr(dprFor(m))} />
             </Canvas>
           </SceneBoundary>
           <svg className="eao__hit" aria-hidden="true">

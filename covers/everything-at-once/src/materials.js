@@ -44,17 +44,24 @@ export function layerMaterial(map, u, seed = 0, backdrop = false, plate = null, 
   // The blur and the tear only run while in use: both are branches on a uniform (the same for every
   // pixel), so a side at rest pays for three taps, not for twelve plus five octaves of noise. Six
   // full-sleeve layers stack over every pixel, so this decides the frame time on integrated GPUs.
+  // The plate and the misregistered red/blue taps are read only while they show (plateMix, shift > 0): both
+  // land exactly on 0 at rest, where one tap gives the same pixel as the three (or six).
   const tex = (q, bias) => {
     const t = (img) => (bias === undefined ? texture(img, q) : texture(img, q).bias(bias));
-    return plate ? mix(t(map), t(plate), plateMix) : t(map);
+    if (!plate) return t(map);
+    const v = t(map).toVar();
+    If(plateMix.greaterThan(0), () => v.assign(mix(v, t(plate), plateMix)));
+    return v;
   };
   m.colorNode = Fn(() => {
     const p = uv();
-    const d = vec2(u.shift, u.shift.mul(0.6));
-    const r = tex(p.add(d));
-    const g = tex(p);
-    const b = tex(p.sub(d));
-    const sharp = vec4(r.r, g.g, b.b, max(max(r.a, g.a), b.a));
+    const sharp = tex(p).toVar();
+    If(u.shift.greaterThan(0), () => {
+      const d = vec2(u.shift, u.shift.mul(0.6));
+      const r = tex(p.add(d));
+      const b = tex(p.sub(d));
+      sharp.assign(vec4(r.r, sharp.g, b.b, max(max(r.a, sharp.a), b.a)));
+    });
     const c = sharp.toVar();
     If(u.blur.greaterThan(0), () => {
       const o = u.blur.mul(0.004);
@@ -76,13 +83,18 @@ export function layerMaterial(map, u, seed = 0, backdrop = false, plate = null, 
       const dist = tap3(e, 0).add(tap3(-e, 0)).add(tap3(0, e)).add(tap3(0, -e)).mul(0.25).sub(0.5);
       const q = vec3(p.mul(30), float(seed));
       const wobble = mx_fractal_noise_float(q, 3, 2, 0.5).mul(0.32); // the tear's meander
-      const fray = mx_fractal_noise_float(vec3(p.mul(260), float(seed + 7)), 2, 2, 0.5).mul(0.09); // fine fibres
       const tear = dist.add(wobble);
       const keep = smoothstep(-0.01, 0.03, tear); // paper that stays on the piece
       // Fibre band past the tear line, only near the real edge: far from the piece `dist` bottoms out at -0.5
       // and the noise alone reached the band, scattering fibres like dirt over the blurred sides.
       const nearEdge = smoothstep(-0.49, -0.4, dist);
-      const core = smoothstep(-0.3, -0.05, tear.add(fray)).mul(keep.oneMinus()).mul(nearEdge);
+      // The fine fibres' noise only where the band can show (elsewhere it is multiplied by 0): no texture reads
+      // inside, so the per-pixel branch is safe.
+      const core = float(0).toVar();
+      If(keep.lessThan(1).and(nearEdge.greaterThan(0)), () => {
+        const fray = mx_fractal_noise_float(vec3(p.mul(260), float(seed + 7)), 2, 2, 0.5).mul(0.09); // fine fibres
+        core.assign(smoothstep(-0.3, -0.05, tear.add(fray)).mul(keep.oneMinus()).mul(nearEdge));
+      });
       const art = c.a.mul(keep); // the print, torn
       const paperA = max(keep, core); // the piece: print + its torn paper edge
       const tornRgb = mix(color('#f6eddb'), c.rgb, art.div(max(paperA, 1e-4)));
@@ -192,7 +204,8 @@ export function mirrorMaterial(fill, sdf, spec) {
     const deep = float(0).toVar();
     const glow = float(0).toVar();
     const core = float(0).toVar();
-    Loop(ECHOES, ({ i }) => {
+    // At rest (amount exactly 0, Record.jsx) every echo's weight and light is 0: skip the loop, same pixel.
+    If(a.greaterThan(0), () => Loop(ECHOES, ({ i }) => {
       const k = float(i).add(1);
       const t = DEPTH(k).div(cz);
       // The shallow echoes shrink but don't slide: if every echo slid with the turn, the side they left showed plain
@@ -210,7 +223,7 @@ export function mirrorMaterial(fill, sdf, spec) {
       purple.mulAssign(float(1).sub(e.ink.mul(weight)));
       magenta.mulAssign(float(1).sub(e.mis.mul(weight).mul(0.7)));
       deep.addAssign(smoothstep(-0.5, 0.5, e.d).mul(onCard));
-    });
+    }));
     const printed = texture(fill, uv())
       .rgb.mul(mix(vec3(1), color('#e2477e'), magenta.oneMinus()))
       .mul(mix(vec3(1), ink, purple.oneMinus()))
@@ -266,8 +279,10 @@ const sdStar = Fn(([p0, r, rf]) => {
  * over the night, dust floats up, and with the record playing sound rings ripple out from the disc. No texture.
  */
 export function backdropMaterial() {
-  const m = new THREE.MeshBasicNodeMaterial({ depthTest: false, depthWrite: false });
-  m.vertexNode = vec4(positionGeometry.xy, 0, 1); // the quad is the clip rect: always the whole canvas
+  const m = new THREE.MeshBasicNodeMaterial({ depthWrite: false });
+  // The quad is the clip rect at the far end of the depth range: drawn after the opaque record (Record.jsx), it
+  // fails the depth test wherever the record already covers the page, so those pixels skip this shader.
+  m.vertexNode = vec4(positionGeometry.xy, 0.9999, 1);
   m.colorNode = Fn(() => {
     const a = MIRROR.amount.mul(1 - BACKDROP_REST).add(BACKDROP_REST);
     const s = screenUV; // top-left origin
@@ -296,10 +311,14 @@ export function backdropMaterial() {
     const c = mix(ground, color('#e2477e'), mis.mul(a).mul(0.6));
     const star = mix(c, tint, ink.mul(a).mul(shimmer).mul(beat.mul(0.5).add(1)).min(1)).add(tint.mul(halo.mul(a).mul(beat.mul(1.5).add(1))));
     // Sound rings: one leaves the disc per beat, fading with distance.
-    const dr = length(px.sub(BACKDROP.disc));
-    const f = dr.div(RING_GAP).sub(BACKDROP.beat).fract();
-    const w = 1.6 / RING_GAP;
-    const ring = smoothstep(0, w, f).oneMinus().add(smoothstep(1 - w, 1, f)).mul(dr.div(-420).exp()).mul(BACKDROP.rings);
+    // (Skipped while the rings are off: they are multiplied by 0 then. The same pixels, less work.)
+    const ring = float(0).toVar();
+    If(BACKDROP.rings.greaterThan(0), () => {
+      const dr = length(px.sub(BACKDROP.disc));
+      const f = dr.div(RING_GAP).sub(BACKDROP.beat).fract();
+      const w = 1.6 / RING_GAP;
+      ring.assign(smoothstep(0, w, f).oneMinus().add(smoothstep(1 - w, 1, f)).mul(dr.div(-420).exp()).mul(BACKDROP.rings));
+    });
     // Dust drifting up, swaying a little.
     const dust = float(0).toVar();
     Loop(DUST, ({ i }) => {
@@ -313,13 +332,16 @@ export function backdropMaterial() {
     const spark = float(0).toVar();
     Loop(SPARKS, ({ i }) => {
       const n = float(i);
-      const d = px.sub(vec2(hash(n.add(1.3)), hash(n.add(7.7))).mul(BACKDROP.view)).abs();
-      const arm = hash(n.add(3.1)).mul(14).add(10);
-      const glint = d.x.div(arm).add(d.y.div(1.2)).negate().exp()
-        .add(d.y.div(arm).add(d.x.div(1.2)).negate().exp())
-        .add(length(d).div(2.5).negate().exp());
       const twinkle = pow(max(sin(t.mul(hash(n.add(6.6)).mul(0.9).add(0.5)).add(hash(n.add(8.8)).mul(6.283))), 0), 6);
-      spark.addAssign(glint.mul(twinkle));
+      // A glint is dark about half of its cycle (twinkle 0, the same for every pixel): skip its arms then.
+      If(twinkle.greaterThan(0), () => {
+        const d = px.sub(vec2(hash(n.add(1.3)), hash(n.add(7.7))).mul(BACKDROP.view)).abs();
+        const arm = hash(n.add(3.1)).mul(14).add(10);
+        const glint = d.x.div(arm).add(d.y.div(1.2)).negate().exp()
+          .add(d.y.div(arm).add(d.x.div(1.2)).negate().exp())
+          .add(length(d).div(2.5).negate().exp());
+        spark.addAssign(glint.mul(twinkle));
+      });
     });
     const lit = star
       .add(tint.mul(ring.mul(0.3)))
