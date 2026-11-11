@@ -1,0 +1,116 @@
+/* covers/queen-bohemian-rhapsody — estilos con alcance de ruta (.qbr). */
+
+.qbr {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  color: #fff4e6;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.qbr--hover {
+  cursor: pointer;
+}
+
+.qbr__canvas {
+  position: absolute !important;
+  inset: 0;
+}
+
+.qbr__title {
+  position: absolute;
+  left: 24px;
+  bottom: 24px;
+  pointer-events: none;
+  text-shadow: 0 1px 12px rgb(0 0 0 / 70%);
+}
+
+.qbr__title h1 {
+  margin: 0;
+  font-size: clamp(1.4rem, 3.6vw, 2.6rem);
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.qbr__title p {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
+}
+
+.qbr__controls {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  font-family: system-ui, sans-serif;
+  font-size: 0.8rem;
+}
+
+.qbr__controls p {
+  margin: 0;
+  opacity: 0.85;
+  text-shadow: 0 1px 8px rgb(0 0 0 / 80%);
+}
+
+.qbr__controls button {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgb(255 244 230 / 60%);
+  background: rgb(0 0 0 / 45%);
+  color: inherit;
+  cursor: pointer;
+}
+
+.qbr__controls button:hover {
+  background: rgb(255 244 230 / 15%);
+}
+
+.qbr__controls button:focus-visible {
+  outline: 2px solid #ffb870;
+  outline-offset: 3px;
+}
+
+.qbr__controls .qbr__enter {
+  padding: 10px 28px;
+  font-size: 1rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  background: rgb(255 184 112 / 22%);
+  border-color: #ffb870;
+}
+
+.qbr__controls .qbr__enter:hover {
+  background: rgb(255 184 112 / 38%);
+}
+
+.qbr__budget {
+  position: absolute;
+  left: 24px;
+  top: 64px;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 55%);
+  font: 12px/1.4 ui-monospace, monospace;
+}
+
+.qbr__budget--over {
+  color: #ff8a7a;
+}
+
+.qbr__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
