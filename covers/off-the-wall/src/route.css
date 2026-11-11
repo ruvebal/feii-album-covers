@@ -1,0 +1,376 @@
+/* /covers/off-the-wall — todo cuelga de .otw (y de .route-off-the-wall en <html>). */
+
+.otw {
+  --otw-cream: #f7e9cf;
+  --otw-brick: #b4553a;
+  --otw-ink: #f4efe6;
+  --otw-glass: rgb(18 12 10 / 0.78);
+  --otw-line: rgb(247 233 207 / 0.22);
+  /* Lado del cuadrado de la portada: igual que frameFraction() en set.js. */
+  --otw-frame: min(78dvh, 86vw);
+  position: relative;
+  height: 100dvh;
+  overflow: hidden;
+  background: #120c0a;
+  color: var(--otw-ink);
+  font-family: 'Oswald', system-ui, sans-serif;
+}
+
+.otw__canvas {
+  position: absolute !important;
+  inset: 0;
+  touch-action: none;
+}
+
+/* Encuadre cuadrado: oscurece lo que queda fuera y pone el título como en un disco. */
+.otw__frame {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--otw-frame);
+  height: var(--otw-frame);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 200vmax rgb(10 6 5 / 0.62);
+  outline: 1px solid rgb(247 233 207 / 0.35);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  padding: calc(var(--otw-frame) * 0.045);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.otw--framed .otw__frame {
+  opacity: 1;
+}
+
+.otw__frame-artist {
+  font-family: 'Yellowtail', cursive;
+  font-size: calc(var(--otw-frame) * 0.07);
+  line-height: 1;
+  color: var(--otw-cream);
+  text-shadow: 0 2px 10px rgb(0 0 0 / 0.45);
+}
+
+.otw__frame-title {
+  margin-top: calc(var(--otw-frame) * 0.01);
+  font-weight: 600;
+  font-size: calc(var(--otw-frame) * 0.045);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--otw-cream);
+  text-shadow: 0 2px 10px rgb(0 0 0 / 0.45);
+}
+
+/* Destello de la cámara al hacer la foto. */
+.otw__flash {
+  position: absolute;
+  inset: 0;
+  background: #fffaf0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.otw__flash.is-on {
+  animation: otw-flash 0.7s ease-out;
+}
+
+@keyframes otw-flash {
+  0% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Panel de controles: arriba a la derecha en escritorio. */
+.otw__panel {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: min(21rem, calc(100vw - 32px));
+  max-height: calc(100dvh - 130px);
+  overflow-y: auto;
+  padding: 16px 18px;
+  border: 1px solid var(--otw-line);
+  border-radius: 14px;
+  background: var(--otw-glass);
+  backdrop-filter: blur(10px);
+  z-index: 5;
+}
+
+.otw__artist {
+  margin: 0;
+  font-family: 'Yellowtail', cursive;
+  font-size: 1.7rem;
+  line-height: 1;
+  color: var(--otw-cream);
+}
+
+.otw__title {
+  margin: 2px 0 0;
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.otw__meta {
+  margin: 4px 0 10px;
+  font-size: 0.82rem;
+  color: rgb(244 239 230 / 0.72);
+}
+
+.otw__toggle {
+  display: none;
+}
+
+.otw__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+}
+
+.otw__group legend {
+  margin-bottom: 6px;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(244 239 230 / 0.6);
+}
+
+.otw button {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--otw-line);
+  border-radius: 999px;
+  background: rgb(247 233 207 / 0.06);
+  color: var(--otw-ink);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.otw button:hover {
+  background: rgb(247 233 207 / 0.14);
+}
+
+.otw button[aria-pressed='true'] {
+  background: var(--otw-brick);
+  border-color: var(--otw-brick);
+  color: #fff;
+}
+
+.otw button:focus-visible,
+.otw summary:focus-visible {
+  outline: 2px solid var(--otw-cream);
+  outline-offset: 2px;
+}
+
+.otw__caption {
+  margin: 4px 0 6px;
+  font-family: system-ui, sans-serif;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.otw__notice {
+  min-height: 1.3em;
+  margin: 0 0 8px;
+  font-family: system-ui, sans-serif;
+  font-size: 0.85rem;
+  color: var(--otw-cream);
+}
+
+.otw__help {
+  margin: 0 0 10px;
+  font-family: system-ui, sans-serif;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: rgb(244 239 230 / 0.7);
+}
+
+.otw kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  margin-right: 2px;
+  padding: 0 4px;
+  border: 1px solid var(--otw-line);
+  border-radius: 4px;
+  font-family: inherit;
+  text-align: center;
+}
+
+.otw__tracks {
+  font-family: system-ui, sans-serif;
+  font-size: 0.85rem;
+}
+
+.otw__tracks h2 {
+  margin: 4px 0 6px;
+  font-family: 'Oswald', system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(244 239 230 / 0.6);
+}
+
+.otw__tracks ol {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Cada canción es un botón a lo ancho, como una pista del disco. */
+.otw button.otw__track {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 30px;
+  padding: 3px 10px;
+  border-radius: 8px;
+  border-color: transparent;
+  background: transparent;
+  text-align: left;
+  font-family: system-ui, sans-serif;
+  font-size: 0.86rem;
+  overflow: hidden;
+}
+
+.otw button.otw__track:hover {
+  border-color: var(--otw-line);
+}
+
+.otw__track-n {
+  min-width: 1.3em;
+  color: rgb(244 239 230 / 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.otw__track-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: calc(var(--p, 0) * 100%);
+  background: var(--otw-cream);
+}
+
+.otw__credit {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+  color: rgb(244 239 230 / 0.6);
+}
+
+.otw__credit a {
+  color: var(--otw-cream);
+}
+
+/* Grano de película y viñeta: la escena se ve como una foto de 1979. */
+.otw__grain {
+  position: absolute;
+  inset: -50%;
+  pointer-events: none;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.45 0 0 0 0 0.4 0 0 0 1.1 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: otw-grain 0.9s steps(6) infinite;
+}
+
+.otw__vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgb(12 6 4 / 0.55) 100%);
+}
+
+@keyframes otw-grain {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-6%, 4%); }
+  40% { transform: translate(5%, -7%); }
+  60% { transform: translate(-3%, 8%); }
+  80% { transform: translate(7%, 2%); }
+  100% { transform: translate(0, 0); }
+}
+
+.otw__budget {
+  margin: 10px 0 0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: rgb(244 239 230 / 0.7);
+}
+
+.otw__budget.is-over {
+  color: #ffb4a2;
+}
+
+/* Móvil: el panel va arriba, plegado al entrar, y deja libre la navegación de la galería. */
+@media (max-width: 720px) {
+  .otw__panel {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-height: 56dvh;
+    padding: 10px 12px;
+  }
+
+  .otw__head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    column-gap: 10px;
+  }
+
+  .otw__head .otw__meta {
+    grid-column: 1;
+    margin-bottom: 0;
+  }
+
+  .otw__toggle {
+    display: inline-block;
+    grid-column: 2;
+    grid-row: 1 / span 3;
+  }
+
+  .otw__body {
+    margin-top: 10px;
+  }
+
+  /* En el móvil el título ya está en el panel: el encuadre no lo repite. */
+  .otw__frame-artist,
+  .otw__frame-title {
+    display: none;
+  }
+
+  .otw__artist {
+    font-size: 1.3rem;
+  }
+
+  .otw__title {
+    font-size: 1.2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .otw__frame {
+    transition: none;
+  }
+
+  .otw__flash.is-on {
+    animation: none;
+  }
+
+  .otw__grain {
+    animation: none;
+  }
+}
