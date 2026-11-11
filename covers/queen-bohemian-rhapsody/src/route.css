@@ -8,6 +8,10 @@
   font-family: Georgia, 'Times New Roman', serif;
 }
 
+.qbr--hover {
+  cursor: pointer;
+}
+
 .qbr__canvas {
   position: absolute !important;
   inset: 0;
@@ -72,6 +76,19 @@
 .qbr__controls button:focus-visible {
   outline: 2px solid #ffb870;
   outline-offset: 3px;
+}
+
+.qbr__controls .qbr__enter {
+  padding: 10px 28px;
+  font-size: 1rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  background: rgb(255 184 112 / 22%);
+  border-color: #ffb870;
+}
+
+.qbr__controls .qbr__enter:hover {
+  background: rgb(255 184 112 / 38%);
 }
 
 .qbr__budget {

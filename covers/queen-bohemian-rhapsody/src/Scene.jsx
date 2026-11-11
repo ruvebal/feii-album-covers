@@ -74,12 +74,15 @@ function GlbWorld({ url }) {
 /**
  * @param {object} props
  * @param {number} props.run Cambia para reiniciar la intro ("Repetir intro").
+ * @param {boolean} props.started false = idle (portada flotando, cámara en t = 0).
+ * @param {() => void} props.onEnter Clic en la portada en idle.
+ * @param {(hovered: boolean) => void} props.onHoverPortal
  * @param {boolean} props.skip Saltar a la pose final.
  * @param {boolean} props.reduced prefers-reduced-motion.
  * @param {boolean} props.done La intro ha terminado.
  * @param {() => void} props.onDone
  */
-export default function Scene({ run, skip, reduced, done, onDone }) {
+export default function Scene({ run, started, onEnter, onHoverPortal, skip, reduced, done, onDone }) {
   const progress = useRef({ t: 0, tod: 0 });
   const world = useRef(null);
 
@@ -99,16 +102,17 @@ export default function Scene({ run, skip, reduced, done, onDone }) {
       <group ref={world} visible={false}>
         <SunsetSky progress={progress} reduced={reduced} />
         <ambientLight intensity={0.35} color="#ffb98a" />
-        {/* Sol bajo detrás de las gradas (+Z): Freddie a contraluz desde la cámara inicial. */}
-        <directionalLight position={[-5, 6, 40]} intensity={2.2} color="#ffb870" />
+        {/* Sol bajo sobre la grada que Freddie tiene delante (−Z): desde detrás (cámara MATCH) queda a
+            contraluz y a la izquierda de cámara (−X), como en la portada. */}
+        <directionalLight position={[-5, 6, -40]} intensity={2.2} color="#ffb870" />
         {/* Foco violeta (task2: sube con la noche, ligado a uTod). */}
         <spotLight position={[-6, 12, -8]} angle={0.5} penumbra={1} intensity={80} color="#9a4dff" />
         {/* TODO(task3): <Suspense><GlbWorld url={MODEL_URL} /></Suspense> (ver stadiumGlb.js). */}
         {USE_GLB ? <GlbWorld url="" /> : <ProceduralWorld />}
       </group>
 
-      <CoverPortal progress={progress} />
-      <CameraRig key={run} skip={skip} onProgress={onProgress} onDone={onDone} />
+      <CoverPortal progress={progress} idle={!started} reduced={reduced} onEnter={onEnter} onHover={onHoverPortal} />
+      <CameraRig key={run} started={started} skip={skip} onProgress={onProgress} onDone={onDone} />
       <RendererInfo key={`info-${run}`} progress={progress} done={done} />
     </>
   );

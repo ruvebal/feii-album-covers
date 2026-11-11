@@ -116,7 +116,7 @@ export default function SunsetSky({ progress, reduced, radius = 500 }) {
     () => ({
       uTime: { value: 0 },
       uTod: { value: 0 },
-      uSunDir: { value: new Vector3(-0.25, 0.05, 1.0) },
+      uSunDir: { value: new Vector3(-0.25, 0.05, -1.0) },
     }),
     [],
   );

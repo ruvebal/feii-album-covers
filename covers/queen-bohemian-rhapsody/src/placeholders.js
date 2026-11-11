@@ -72,20 +72,31 @@ function fuse(parts) {
   return merged;
 }
 
-/** Freddie estilizado tipo maniquí: pies en y = 0, mira a -Z, cara a ~1,72 m, brazo izquierdo alzado. */
+/**
+ * Freddie-maniquí (placeholder, ~1,8 m). Misma pose que la figura de NUESTRA portada
+ * (tools/make-sleeve.mjs), para el match cut de keys.js. Se le ve POR DETRÁS: la cámara MATCH está
+ * en +Z mirando a −Z (−X a su izquierda), así que el puño en alto (izquierda de la imagen) va en −X
+ * y el micro, delante de él, en +X. Piernas abiertas. Medidas = coordenadas de la imagen convertidas a metros con la escala del encaje
+ * (1 / K ≈ 3,13 m por unidad de imagen). Si cambias la pose aquí o en el script, cambia las dos.
+ * Pies en y ≈ 0,05 y coronilla en 1,82 (FREDDIE en keys.js).
+ */
 export function makeFreddie() {
   return fuse([
-    place(new CapsuleGeometry(0.075, 0.75, 4, 12), [-0.1, 0.48, 0]), // pierna izq.
-    place(new CapsuleGeometry(0.075, 0.75, 4, 12), [0.1, 0.48, 0]), // pierna dcha.
+    // Piernas: de la cadera (±0,06; 0,95) a los pies (±0,28; 0,06). Rotación z > 0 inclina la punta hacia −X.
+    place(new CapsuleGeometry(0.075, 0.77, 4, 12), [0.17, 0.5, 0], [0, 0, 0.243]), // pierna +X
+    place(new CapsuleGeometry(0.075, 0.77, 4, 12), [-0.17, 0.5, 0], [0, 0, -0.243]), // pierna −X
     place(new CapsuleGeometry(0.16, 0.42, 4, 12), [0, 1.2, 0]), // torso
     place(new CapsuleGeometry(0.045, 0.08, 2, 8), [0, 1.56, 0]), // cuello
-    place(new SphereGeometry(0.11, 16, 12), [0, 1.71, 0]), // cabeza
-    place(new CapsuleGeometry(0.05, 0.55, 4, 10), [-0.3, 1.77, 0], [0, 0, 0.27]), // brazo alzado (puño arriba)
-    place(new CapsuleGeometry(0.05, 0.45, 4, 10), [0.26, 1.24, -0.1], [0.4, 0, 0.16]), // brazo que sujeta el micro
+    place(new SphereGeometry(0.11, 16, 12), [0, 1.71, 0]), // cabeza (coronilla 1,82)
+    // Brazo alzado: del hombro (−0,17; 1,5) al puño (−0,39; 2,17).
+    place(new CapsuleGeometry(0.05, 0.6, 4, 10), [-0.28, 1.835, 0], [0, 0, 0.317]),
+    place(new SphereGeometry(0.07, 12, 8), [-0.39, 2.17, 0]), // puño
+    // Brazo del micro: codo abajo, mano al pecho, el micro delante de él (−Z).
+    place(new CapsuleGeometry(0.05, 0.45, 4, 10), [0.26, 1.24, -0.1], [0.4, 0, 0.16]),
   ]);
 }
 
-/** Pie de micro corto (el "medio pie" que lleva en la mano) + cabeza del micro. */
+/** Pie de micro corto (el "medio pie" que lleva en la mano) + cabeza del micro, en el lado +X. */
 export function makeMic() {
   return fuse([
     place(new CylinderGeometry(0.012, 0.016, 0.8, 8), [0.24, 1.25, -0.28], [-0.3, 0, 0.2]),
