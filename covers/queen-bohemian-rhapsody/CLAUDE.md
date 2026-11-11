@@ -16,20 +16,21 @@ Si algo de aquí contradice al repo, gana el repo.
 ## Mapa de archivos (src/)
 | Archivo | Qué hace |
 | --- | --- |
-| `Route.jsx` | Canvas, overlay DOM (título, Saltar/Repetir intro, Escape, aria-live), reduced-motion, BudgetProbe |
+| `Route.jsx` | Canvas, estado idle → «Entrar», overlay DOM (título, Entrar, Saltar/Repetir intro, Escape, aria-live), cursor en hover, reduced-motion, BudgetProbe |
 | `Scene.jsx` | Árbol R3F: portada → mundo (cielo, luces, estadio, Freddie, multitud); `USE_GLB` elige placeholders o GLB |
-| `keys.js` | Keyframes de cámara (`KEYS`), `INTRO_END`, `PORTAL_FADE`, `WORLD_FROM` |
-| `CameraRig.jsx` | Vuelo Catmull-Rom por tiempos → `CameraControls` al terminar; teclas dev |
+| `keys.js` | Match cut calculado (`MATCH`, `SLEEVE_CENTER`, `SLEEVE_SIZE`, `IDLE_CAMERA`), zoom (`FLIGHT_FROM`, `ZOOM_FOV`), keyframes del vuelo (`KEYS`), `PORTAL_FADE`, `WORLD_FROM` |
+| `CameraRig.jsx` | Idle: `OrbitControls` sobre la funda → acercamiento a `MATCH` → zoom de FOV (match cut) → vuelo Catmull-Rom → `CameraControls`; teclas dev |
 | `SunsetSky.jsx` | Skybox con shader propio (`uTime`, `uTod`, `uSunDir`) |
-| `CoverPortal.jsx` | Portada PROPIA (canvas 2D procedural) que se desvanece |
+| `CoverPortal.jsx` | Disco en su funda (portada delante/detrás + vinilo asomando): balanceo en idle, clic = entrar, se desvanece |
+| `sleeveArt.js` | Imagen de la funda: procedural propia o `public/sleeve.png` (`SLEEVE_URL`) |
 | `Crowd.jsx` | Multitud = 1 `InstancedMesh`, posiciones con PRNG con semilla |
 | `placeholders.js` | Geometría procedural con los nombres/medidas del futuro GLB |
 | `stadiumGlb.js` | Camino GLTF + KTX2 + meshopt (inactivo hasta task3) |
 | `RendererInfo.jsx` | `console.table` de renderer.info en portada / plano ancho / plano final |
 
 ## Ejes de la escena (contrato con Blender)
-Metros, +Y arriba. Freddie en el origen, pies en y = 0, mirando a −Z, cara a ~1,72 m. Superficie del escenario y = 0,
-césped y = −1,6. Sol hacia +Z. Grada desde r = 24 m. Fans: +Z local apunta al escenario.
+Metros, +Y arriba. Freddie en el origen, pies en y = 0, mirando a −Z, cara a ~1,72 m; pose = la figura de `public/sleeve.png` vista por detrás (puño en alto en −X, micro delante en +X) porque el match cut de `keys.js` depende de ello: si se cambia la pose (Blender o `make-sleeve.mjs`), revisar `FIGURE`/`FREDDIE` en `keys.js`. Superficie del escenario y = 0,
+césped y = −1,6. Sol hacia −Z (delante de Freddie, sobre la grada que mira), ligeramente a −X: desde detrás (cámara MATCH en +Z) queda a contraluz y a la izquierda de cámara, como en la portada. El vuelo arranca POR DETRÁS (`VIEW_DIR = −1` en `keys.js`). Grada desde r = 24 m. Fans: +Z local apunta al escenario.
 
 ## Flujo de PRs (rama: `cover-queen-bohemian-rhapsody-task<N>-<tema>`, nunca push a main)
 - task1: Route.jsx + registry + `public/thumbnail.svg` + `docs/renderer-info.md` (mesh/cámara/escena)
@@ -54,7 +55,7 @@ Objetivo propio: ≤ 600k tris, ≤ 40 draw calls, ≤ 3 atlas 2048², GLB < 15 
 Freddie 15–25k · estadio bakeado ≤ 20k · Stage+Mic ≤ 3k · Fan_LOD0 ~400 · Fan_LOD1 ~100.
 
 ## Dev tools en CameraRig (solo `npm run dev`)
-Espacio pausa · ←/→ scrub · S salta al final · **P imprime keyframe** para pegar en `keys.js`. Escape (también en build) salta la intro.
+La ruta arranca en idle (arrastrar orbita el disco); entra con clic en la funda o «Entrar». Después: Espacio pausa · ←/→ scrub · S salta al final · **P imprime keyframe** para pegar en `keys.js` (ignoradas con foco en un botón). Escape (también en build) salta la intro una vez empezada.
 
 ## Blender (Fase 3, vía MCP de Blender) — nombres de nodo exactos
 `Freddie`, `Mic`, `Stage`, `Stadium`, `Fan_LOD0`, `Fan_LOD1`. Export GLB +Y, sin cámaras/luces, luego

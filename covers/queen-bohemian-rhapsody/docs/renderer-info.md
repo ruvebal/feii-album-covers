@@ -29,14 +29,15 @@ Triángulos por geometría, contados en Node con las mismas funciones de `src/pl
 | --- | ---: | ---: |
 | Stadium (césped + grada, LatheGeometry 72 seg.) | 11 712 | 1 |
 | Stage | 12 | 1 |
-| Freddie (cápsulas fusionadas) | 1 440 | 1 |
+| Freddie (cápsulas fusionadas, pose de la portada propia) | 1 608 | 1 |
 | Mic | 172 | 1 |
 | Crowd: Fan_LOD0 provisional 96 × 5000 instancias | 480 000 | 1 |
 | SunsetSky (esfera 48 × 32) | 2 976 | 1 |
-| CoverPortal (plano) | 2 | 1 (solo t < 3,4 s) |
-| **Total con todo visible** | **≈ 496 314** | **7** |
+| CoverPortal: funda (caja, 6 grupos de material) + vinilo + etiqueta + telón | 12 + 384 + 192 + 2 = 590 | 6 + 1 + 1 + 1 = 9 (solo hasta t = 2,3 s) |
+| **Total con todo visible** (fundido t = 1,3–2,3 s) | **≈ 497 070** | **15** |
 
-Esperado: en la portada solo se dibuja CoverPortal (el mundo está oculto hasta t = 2,6 s) → ~1 call, 2 triángulos.
+Esperado: en idle y durante el zoom solo se dibuja CoverPortal (el mundo está oculto hasta t = 1,3 s) → ~9 calls, ~590 triángulos.
+Tras el fundido (t > 2,3 s) desaparece la funda: ≈ 496 480 triángulos, 6 calls.
 `memory.textures` es un **recuento**, no bytes: la portada aporta 1 CanvasTexture.
 
 La multitud es el 97 % de los triángulos. Si el plano final pasa de presupuesto en un portátil modesto,
