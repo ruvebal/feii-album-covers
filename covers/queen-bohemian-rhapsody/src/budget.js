@@ -11,5 +11,8 @@
 // Shape when filled:
 //   export const CEILING = { calls: 0, triangles: 0, geometries: 0, textures: 0 };
 
+// Medido el 2026-11-11 (HeadlessChrome 157, ANGLE/SwiftShader, 1440×900, DPR 1): pico de la intro,
+// durante el fundido portada → mundo (t ≈ 1,3–2,3 s), cuando funda, telón y mundo se dibujan a la
+// vez. Detalle en docs/renderer-info.md.
 /** @type {import('../../../src/lib/types.js').Ceiling | null} */
-export const CEILING = null;
+export const CEILING = { calls: 16, triangles: 497072, geometries: 10, textures: 2 };
