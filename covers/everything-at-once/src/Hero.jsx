@@ -1,0 +1,521 @@
+// covers/everything-at-once — a member's hero object: the drawn prop leaves the page and performs in 3D.
+//
+// At rest the hero is hidden and Karu's drawing shows it. When its side is presented (selected, settled on
+// the front, nobody handling the record), the 3D model appears exactly over the drawn one, registered to the
+// cover camera, while the side's art crossfades to its under-plate (the drawing with the prop removed). Then
+// it rises off the page and plays to the beat: the pendulum ticks and the body hops (metronome), or the
+// cigarettes hop in turn while their embers breathe and smoke; the riso channels kick on each beat. Leaving reverses it; the channels align as it lands.
+
+import { useEffect, useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
+import { useGLTF } from '@react-three/drei';
+import * as THREE from 'three/webgpu';
+import { Box3, MathUtils, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
+import {
+  float,
+  Fn,
+  If,
+  instanceIndex,
+  instancedBufferAttribute,
+  mix,
+  positionLocal,
+  sin,
+  smoothstep,
+  texture,
+  time,
+  uniform,
+  uv,
+  vec2,
+  vec3,
+  vec4,
+} from 'three/tsl';
+import { useKTX2Texture } from '../../../src/lib/ktx2.js';
+import { useReleaseOnUnmount } from './materials.js';
+import { TURN } from './turn.js';
+import { AUDIO, BEAT, BPM, GLOW, HEROES, SHOW, STRUM, SWEEP, UP, clearFor } from './heroes.js';
+
+const COVER_HEIGHT = 8.935; // the Blender cover camera: straight down from this height (cameras.json)
+const TAN_COVER = 18 / 50; // its half field of view: 36 mm sensor, 50 mm lens
+const SWING = 0.2; // rad: wider, the pale rod pokes past the housing's narrow top as a stray line
+const CALM = 0.3; // s the record must stay settled before the hero comes back
+const Y_AXIS = new Vector3(0, 1, 0);
+const X_AXIS = new Vector3(1, 0, 0);
+const ARM_OPEN = 1.2; // rad: the sunglasses' arms swing out this far
+
+// ?debug only: window.__eaoHeroHold = <0..1> holds the presentation there, __eaoHeroHide hides the model
+// (registration checks: scripts/hero_fit.py).
+const DEBUG = new URLSearchParams(window.location.search).has('debug') ? window : null;
+const smooth = (a, b, x) => MathUtils.smoothstep(x, a, b);
+// Lands exactly on the target, so a parked hero is really hidden.
+const approach = (v, target, dt, rate) => {
+  const n = v + (target - v) * Math.min(1, dt * rate);
+  return Math.abs(target - n) < 1e-4 ? target : n;
+};
+const tmpM = new Matrix4();
+const tmpF = new Matrix4();
+const tmpT = new Matrix4();
+const tmpQM = new Matrix4();
+const Z_AXIS = new Vector3(0, 0, 1);
+const tmpQ = new Quaternion();
+const RISE = 0.28; // of the hero's size, towards the camera
+const BOB = 0.12; // model units (a cigarette is 1.5 long)
+const PUFFS = 8; // smoke puffs per ember, one instanced draw for all of them
+const SMOKE_LIFE = 2.6; // s from the ember until a puff has faded
+const STRING_W = 0.045; // model units across a string (the guitar's body is ~5.5 wide)
+const STRING_AMP = 0.06; // model units: the widest swing of a string's middle at a full strum
+const DPAD_TIP = 0.04; // rad: within the arm tip's clearance (pushing the D-pad bit it into the shell)
+const STICK = 0.35; // rad: the stick's tilt as it circles
+const PRESS_DARK = 0.3; // a held button darkens: its safe travel (~0.004) barely shows from above
+
+/** An image-space similarity for the head-on camera, as a sleeve-space matrix: rotation and scale about the
+ *  optical axis, shift (ndc) as a shear along the view, so every depth moves by the same amount on screen. */
+function imageSim(m, rot, scale, tx, ty, cam, vd) {
+  const c = Math.cos(rot) * scale,
+    s = Math.sin(rot) * scale;
+  return m.set(c, -s, -tx / vd, (tx * cam) / vd, s, c, -ty / vd, (ty * cam) / vd, 0, 0, 1, 0, 0, 0, 0, 1);
+}
+const tmpV = new Vector3();
+const tmpS = new Vector3();
+const tmpP = new Vector3();
+const FACE = new Quaternion();
+
+/** Place the smoke puffs: each one leaves its ember at a staggered time, drifts up the page (glTF -z is up on
+ *  the cover) and off it (+y), sways, grows and fades. `level` 0 hides them all (handoff, reduced motion).
+ *  The glow points sit on the tips and swell with `glow`. */
+function puffs({ mesh, alpha, n, points }, embers, time, level, glow) {
+  embers.forEach((em, i) => {
+    tmpP.copy(em.tip).applyMatrix4(em.o.matrix);
+    const size = 0.4 + 0.35 * glow; // the halo swells with the flare
+    points.setMatrixAt(i, tmpM.compose(tmpP, FACE, tmpS.set(size, size, size)));
+  });
+  points.instanceMatrix.needsUpdate = true;
+  for (let i = 0; i < n; i++) {
+    const em = embers[Math.floor(i / PUFFS)];
+    const k = i % PUFFS;
+    const age = (time / SMOKE_LIFE + k / PUFFS + em.tip.y * 0.37 * Math.floor(i / PUFFS)) % 1;
+    tmpP.copy(em.tip).applyMatrix4(em.o.matrix); // the pivots are root nodes: their matrix is scene space
+    const sway = Math.sin(age * 5 + i) * 0.08 * age;
+    tmpP.x += sway;
+    tmpP.y += age * 0.5;
+    tmpP.z -= age * 0.9;
+    const size = 0.1 + age * 0.45;
+    tmpM.compose(tmpP, FACE, tmpS.set(size, size, size));
+    mesh.setMatrixAt(i, tmpM);
+    alpha.array[i] = level * smooth(0, 0.12, age) * (1 - age) ** 1.5;
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+  alpha.needsUpdate = true;
+}
+
+/** The hero's unlit material: the painted texture with the riso shift, fading with `show`. `glow` lights the
+ *  ember texels (the cigarettes); `glint` = [lo, size] of the mesh's local box adds the sweeping highlight;
+ *  `pressed` darkens each mesh by its own userData.pressed (0..1, the controller's buttons). */
+function heroMaterial(map, shift, show, glow, glint, pressed = false) {
+  // The red and blue taps move only while the riso shift kicks (> 0); at 0 one tap is the same pixel.
+  const g = texture(map, uv());
+  const shifted = Fn(() => {
+    const c = g.rgb.toVar();
+    If(shift.greaterThan(0), () => {
+      const d = vec2(shift, shift.mul(0.6));
+      c.assign(vec3(texture(map, uv().add(d)).r, g.g, texture(map, uv().sub(d)).b));
+    });
+    return c;
+  })();
+  // Unlit: the shading is painted in Karu's style. Double-sided as the GLB says (the recess's back wall is
+  // a single outward-facing surface).
+  const m = new THREE.MeshBasicNodeMaterial({
+    side: THREE.DoubleSide,
+    transparent: true,
+  });
+  let rgb = shifted;
+  if (glow) {
+    // The ember: the painted red ring and the red specks on the ash are the only texels that are bright red with
+    // almost no green or blue (linear); they breathe with `glow`.
+    const ember = smoothstep(0.3, 0.5, g.r)
+      .mul(smoothstep(0.12, 0.04, g.b))
+      .mul(smoothstep(0.15, 0.05, g.g));
+    rgb = rgb.add(vec3(1, 0.32, 0.08).mul(ember.mul(glow)));
+  }
+  if (glint) {
+    // A glint crosses the lenses: a soft white band along the diagonal of the mesh's own box (its atlas UVs are
+    // scattered islands), at SWEEP (0..1 across, outside that range it is off the lens).
+    const q = positionLocal.sub(vec3(...glint[0])).div(vec3(...glint[1]));
+    const diag = q.x.add(q.y).add(q.z).div(3);
+    rgb = rgb.add(vec3(1, 0.95, 1).mul(smoothstep(0.07, 0, diag.sub(SWEEP).abs()).mul(0.85)));
+  }
+  if (pressed) {
+    // one material for every part; the value is read per drawn object
+    const k = uniform(0).onObjectUpdate(({ object }) => object.userData.pressed ?? 0);
+    rgb = rgb.mul(float(1).sub(k.mul(PRESS_DARK)));
+  }
+  m.colorNode = vec4(rgb, show); // never clipped: the whole hero shows, however far the record is
+  return m;
+}
+
+/**
+ * @param {{ name: string, active: string | null, reduced: boolean,
+ *   shift: import('three/tsl').UniformNode<number>, rest: { z: number, comp: number, ax: number, ay: number },
+ *   viewDistance: number, frontZ: number }} props
+ */
+export default function Hero({ name, active, reduced, shift, rest, viewDistance, frontZ }) {
+  const spec = HEROES[name];
+  const { scene } = useGLTF(spec.glb, false, true);
+  const map = useKTX2Texture(spec.tex);
+  const show = SHOW[name];
+  const glow = GLOW[name];
+  const mat = useMemo(
+    () => heroMaterial(map, shift, show, spec.ember ? glow : null, null, !!spec.press),
+    [map, shift, show, glow, spec.ember, spec.press],
+  );
+
+  // Smoke: soft puffs leave each ember, drift up the page and off it towards the viewer, grow and fade.
+  const smoke = useMemo(() => {
+    if (!spec.ember) return null;
+    const n = PUFFS * Object.keys(spec.ember).length;
+    const alpha = new THREE.InstancedBufferAttribute(new Float32Array(n), 1);
+    const geo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2); // facing the camera (glTF y = up off the page)
+    const m = new THREE.MeshBasicNodeMaterial({
+      transparent: true,
+      depthWrite: false,
+    });
+    const dist = uv().sub(0.5).length();
+    const puff = smoothstep(0.5, 0.18, dist); // a soft disc, slightly darker towards its rim like a riso dot
+    m.colorNode = vec4(
+      vec3(0.75, 0.61, 0.83).mul(smoothstep(0.5, 0.2, dist).mul(0.25).add(0.75)),
+      puff.mul(instancedBufferAttribute(alpha)).mul(show).mul(0.5),
+    );
+    const mesh = new THREE.InstancedMesh(geo, m, n);
+    mesh.renderOrder = 102;
+    mesh.frustumCulled = false; // the instance matrices move every frame
+    // The glow point: one warm, additive halo per ember tip that flares on every beat (user, 8 Nov).
+    // Drawn over its own stick (the halo plane cuts through the tip). Plain alpha blending: additive drew the
+    // quad as a dark square on this renderer.
+    const gm = new THREE.MeshBasicNodeMaterial({
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+    });
+    const halo = smoothstep(0.5, 0, dist);
+    gm.colorNode = vec4(vec3(1, 0.45, 0.14), halo.pow(1.6).mul(glow).mul(show).mul(0.85));
+    const points = new THREE.InstancedMesh(geo, gm, Object.keys(spec.ember).length);
+    points.renderOrder = 103;
+    points.frustumCulled = false;
+    return { mesh, alpha, n, points };
+  }, [spec.ember, show, glow]);
+  useEffect(
+    () => () => {
+      if (!smoke) return;
+      smoke.mesh.geometry.dispose();
+      smoke.mesh.material.dispose();
+      smoke.points.material.dispose();
+      smoke.mesh.dispose();
+      smoke.points.dispose();
+    },
+    [smoke],
+  );
+
+  // The guitar's strings: one instanced strip per string, saddle to nut, standing-wave vibration in the vertex
+  // shader (fundamental mode across the strip, fast, a different phase per string), as hard as STRUM.
+  const strings = useMemo(() => {
+    if (!spec.strings) return null;
+    const geo = new THREE.PlaneGeometry(1, STRING_W, 32, 1).rotateX(-Math.PI / 2).translate(0.5, 0, 0);
+    const m = new THREE.MeshBasicNodeMaterial({ transparent: true });
+    const wave = sin(positionLocal.x.mul(Math.PI)).mul(sin(time.mul(46).add(float(instanceIndex).mul(1.9))));
+    m.positionNode = positionLocal.add(vec3(0, 0, wave.mul(STRUM).mul(STRING_AMP)));
+    // pale metal with Karu's plum ink along both edges
+    const across = uv().y.sub(0.5).abs();
+    m.colorNode = vec4(mix(vec3(0.024, 0.0025, 0.027), vec3(0.86, 0.78, 0.9), smoothstep(0.5, 0.22, across)), show);
+    const mesh = new THREE.InstancedMesh(geo, m, spec.strings.length);
+    spec.strings.forEach(([a, b], i) => {
+      const from = new Vector3(...a);
+      const d = new Vector3(...b).sub(from);
+      const len = d.length();
+      mesh.setMatrixAt(i, new Matrix4().compose(from, new Quaternion().setFromUnitVectors(X_AXIS, d.normalize()), new Vector3(len, 1, 1)));
+    });
+    mesh.renderOrder = 102; // over the guitar
+    mesh.frustumCulled = false; // the vertex shader moves the strips past their box
+    return mesh;
+  }, [spec.strings, show]);
+  useEffect(
+    () => () => {
+      if (!strings) return;
+      strings.geometry.dispose();
+      strings.material.dispose();
+      strings.dispose();
+    },
+    [strings],
+  );
+
+  // Registration: the GLB keeps its place in the cover scene (glTF y = Blender up = towards the cover camera,
+  // which looks straight down from COVER_HEIGHT). The route camera has the cover camera's field of view, so
+  // scaling about it by k keeps every point's projection: the hero lies exactly where the 3D render had it,
+  // underside on its side's layer, with its true proportions.
+  const rig = useRef(null);
+  useEffect(() => {
+    // Parts laid on their drawn sticks (absolute, so applying it again to the cached scene is harmless).
+    for (const [n, p] of Object.entries(spec.place ?? {})) {
+      const o = scene.getObjectByName(n);
+      if (!o) throw new Error(`Hero: no ${n} in ${name}'s GLB`);
+      o.position.fromArray(p.position);
+      o.quaternion.fromArray(p.quaternion);
+    }
+    // The model's box in its own (glTF) space: setFromObject would measure it in world space, through the record
+    // and side transforms it already sits under.
+    scene.updateMatrixWorld(true);
+    const toScene = new Matrix4().copy(scene.matrixWorld).invert();
+    const box = new Box3();
+    scene.traverse((o) => {
+      if (!o.isMesh) return;
+      o.geometry.computeBoundingBox();
+      box.union(o.geometry.boundingBox.clone().applyMatrix4(new Matrix4().multiplyMatrices(toScene, o.matrixWorld)));
+    });
+    const cam = viewDistance + frontZ; // route camera height over the sleeve's centre plane
+    const k = (cam - rest.z) / (COVER_HEIGHT - box.min.y);
+    if (Math.abs(viewDistance * TAN_COVER - 1) > 1e-6) throw new Error('Hero: the route camera must use the cover FOV');
+    const place = new Matrix4()
+      .makeTranslation(0, 0, cam - k * COVER_HEIGHT)
+      .multiply(new Matrix4().makeScale(k, k, k))
+      .multiply(new Matrix4().makeRotationX(Math.PI / 2));
+    // the ray it rises along: through its box centre, or through `anchor` (glTF) for a prop mostly off the cover
+    const centre = (spec.anchor ? new Vector3(...spec.anchor) : box.getCenter(new Vector3())).applyMatrix4(place);
+    const pivot = new Matrix4()
+      .makeTranslation(rest.ax * rest.comp, rest.ay * rest.comp, rest.z)
+      .multiply(new Matrix4().makeScale(rest.comp, rest.comp, rest.comp));
+    const swing = scene.getObjectByName(spec.swing);
+    const toCamera = new Vector3(0, 0, cam).sub(centre).normalize();
+    const size = k * box.getSize(new Vector3()).length();
+    const unpivot = pivot.clone().invert();
+    rig.current = {
+      place,
+      mid: box.getCenter(new Vector3()), // glTF space: the tilt turns about it
+      anchor: spec.anchor ? new Vector3(...spec.anchor) : null,
+      unpivot, // the hero lives in its side's pivot, so it lifts and grows with the side
+      centre,
+      toCamera,
+      size,
+      swing,
+      swingRest: swing ? swing.quaternion.clone() : null,
+      // parts that fold about their hinge's x axis (the sunglasses' arms): sign = the opening direction
+      fold: Object.entries(spec.fold ?? {}).map(([n, sign]) => {
+        const o = scene.getObjectByName(n);
+        if (!o) throw new Error(`Hero: no ${n} in ${name}'s GLB`);
+        return { o, sign, rest: o.quaternion.clone() };
+      }),
+      bob: (spec.bob ?? []).map((n) => {
+        const o = scene.getObjectByName(n);
+        if (!o) throw new Error(`Hero: no ${n} in ${name}'s GLB`);
+        return { o, y: o.position.y };
+      }),
+      // each ember: its pivot (a root node of the GLB) and the tip along the pivot's local y
+      embers: Object.entries(spec.ember ?? {}).map(([n, y]) => ({
+        o: scene.getObjectByName(n),
+        tip: new Vector3(0, y, 0),
+      })),
+      // buttons: pivot empty, its press direction (parent space) and depth, the mesh that darkens
+      presses: (spec.press ?? []).map((n) => {
+        const o = scene.getObjectByName(n);
+        if (!o?.userData.depth) throw new Error(`Hero: no press data on ${n} in ${name}'s GLB`);
+        return {
+          o,
+          dpad: n === spec.dpad,
+          rest: o.position.clone(),
+          restQ: o.quaternion.clone(),
+          dir: new Vector3(...o.userData.press),
+          depth: o.userData.depth,
+          mesh: o.children.find((c) => c.isMesh),
+        };
+      }),
+      stick: spec.stick ? scene.getObjectByName(spec.stick) : null,
+    };
+    if (spec.stick && !rig.current.stick) throw new Error(`Hero: no ${spec.stick} in ${name}'s GLB`);
+    const stickRest = rig.current.stick?.quaternion.clone();
+    if (DEBUG)
+      (DEBUG.__eaoHeroRigs ??= {})[name] = {
+        scene,
+        rig: rig.current,
+        beat: BEAT,
+        audio: AUDIO,
+        show: SHOW,
+        glow: GLOW,
+        strum: STRUM,
+      };
+    return () => {
+      if (swing) swing.quaternion.copy(rig.current.swingRest); // the cached scene stays at rest
+      for (const b of rig.current.bob) b.o.position.y = b.y;
+      for (const f of rig.current.fold) f.o.quaternion.copy(f.rest);
+      for (const p of rig.current.presses) {
+        p.o.position.copy(p.rest);
+        p.o.quaternion.copy(p.restQ);
+        if (p.mesh) p.mesh.userData.pressed = 0;
+      }
+      rig.current.stick?.quaternion.copy(stickRest);
+    };
+  }, [scene, rest, viewDistance, frontZ, spec.swing, spec.bob, spec.place, spec.ember, spec.fold, spec.anchor, spec.press, spec.dpad, spec.stick, name]);
+
+  const group = useRef();
+  useEffect(() => {
+    const meshes = [];
+    scene.traverse((o) => o.isMesh && meshes.push(o));
+    let glint = null;
+    for (const o of meshes) {
+      o.material = mat;
+      o.renderOrder = 101; // over its side, which draws at 100 while selected
+      // the glint mesh: named so, or (after meshopt moved the mesh off a node that has children) the unnamed
+      // mesh node under it
+      if (spec.glint && (o.name === spec.glint || (o.parent?.name === spec.glint && !o.userData.name))) {
+        o.geometry.computeBoundingBox();
+        const bb = o.geometry.boundingBox;
+        glint = heroMaterial(map, shift, show, null, [bb.min.toArray(), bb.getSize(new Vector3()).toArray()]);
+        o.material = glint;
+      }
+    }
+    return () => {
+      mat.dispose();
+      glint?.dispose();
+    };
+  }, [scene, mat, map, shift, show, spec.glint]);
+  useReleaseOnUnmount([spec.tex], [map], () => {
+    scene.traverse((o) => o.geometry?.dispose());
+    useGLTF.clear(spec.glb);
+  });
+
+  const st = useRef({ show: 0, beat: 0, calm: CALM, time: 0 });
+  useFrame((_, delta) => {
+    const dt = Math.min(delta, 0.05);
+    const s = st.current;
+    const R = rig.current;
+    if (!R) return;
+    // Presented: selected, upright on the front and the record not being turned. The vinyl coming out or going
+    // in (tapped or pulled) leaves it performing (user, 8 Nov). The selection itself is Route's.
+    const turning = (TURN.mode === 'drag' || TURN.mode === 'coast') && TURN.zone !== 'vinyl';
+    const handled = turning || TURN.flat < 0.999;
+    // Back only after 0.3 s of calm: while the record settles the tests above flip back and forth, which
+    // made the hero flicker in and out (user, 7 Nov).
+    s.calm = handled ? 0 : s.calm + dt;
+    const on = active === name && s.calm >= CALM && clearFor(name);
+    // Leaving for another member's hero goes twice as fast: that one waits for this one to be down.
+    s.show = approach(s.show, on ? 1 : 0, reduced ? 1 : dt, reduced ? 1e9 : on ? 2.2 : active ? 8 : 4);
+    // Leaving, it stops drawing once invisible: faded but drawn it still wrote depth, and the next side showed a
+    // hole in its shape until the fade reached exactly 0 (~1 s; user, 8 Nov).
+    if (!on && s.show < 0.02) s.show = 0;
+    if (DEBUG?.__eaoHeroHold !== undefined) s.show = DEBUG.__eaoHeroHold;
+    const g = group.current;
+    g.visible = s.show > 0 && !DEBUG?.__eaoHeroHide;
+    UP[name] = s.show;
+    SHOW[name].value = smooth(0, 0.2, s.show); // the handoff: hero in, side to its under-plate
+    if (s.show === 0) {
+      s.beat = 0;
+      s.time = 0;
+      BEAT[name] = 0;
+      return;
+    }
+    const lift = reduced ? 0 : smooth(0.15, 1, s.show); // leaves the page after the handoff
+    const perf = reduced ? 0 : smooth(0.7, 1, s.show); // plays once it is up
+    // With a song playing the hero keeps its tempo and locks onto its beat: the phase snaps while the hero is
+    // not yet playing, and eases in (no jump) once it is.
+    const clock = AUDIO.playing ? AUDIO.clock?.() : null;
+    const k = clock && spec.half ? 0.5 : 1; // a half-time hero locks onto every other beat (loops are whole bars)
+    s.beat += (dt * (clock?.bpm ?? BPM) * k) / 60;
+    if (clock) {
+      const err = ((((clock.beat * k - s.beat) % 1) + 1.5) % 1) - 0.5;
+      s.beat += perf === 0 ? err : err * Math.min(1, dt * 4);
+    }
+    s.beat = ((s.beat % 64) + 64) % 64; // bounded
+    if (DEBUG?.__eaoHeroRigs?.[name]) DEBUG.__eaoHeroRigs[name].heroBeat = s.beat; // for the sync check
+    const phase = s.beat % 1;
+    const pulse = Math.max(0, Math.sin(phase * Math.PI)) ** 4 * perf;
+    // Parts that hop in turn (the cigarettes, up off the page in model units) or the whole hero (the metronome).
+    for (let i = 0; i < R.bob.length; i++) R.bob[i].o.position.y = R.bob[i].y + (Math.floor(s.beat) % R.bob.length === i ? pulse * BOB : 0);
+    const hop = R.bob.length ? 0 : pulse * 0.02;
+    BEAT[name] = AUDIO.playing ? (1 - phase) ** 6 * 0.004 * perf : 0; // the riso kick only with the music on
+    // The arms open over one beat and fold back over the next.
+    const open = (0.5 - 0.5 * Math.cos(s.beat * Math.PI)) * ARM_OPEN * perf;
+    for (const f of R.fold) f.o.quaternion.copy(f.rest).multiply(tmpQ.setFromAxisAngle(X_AXIS, open * f.sign));
+    SWEEP.value = ((s.beat / 2) % 1) * 1.6 - 0.3; // the glint crosses every two beats
+    if (R.swing)
+      R.swing.quaternion
+        .copy(R.swingRest)
+        .multiply(tmpQ.setFromAxisAngle(Y_AXIS, Math.sin(s.beat * Math.PI) * SWING * perf));
+    s.time = (s.time + dt) % 600; // bounded
+    // With a song playing the embers flare on every beat and die down until the next; silent (or reduced motion)
+    // they hold a steady glow (user, 8 Nov).
+    const steady = reduced ? 0.6 : perf * 0.6;
+    GLOW[name].value = AUDIO.playing && !reduced ? perf * (0.45 + 0.55 * (1 - phase) ** 3) : steady;
+    if (smoke) puffs(smoke, R.embers, s.time, reduced ? 0 : perf, GLOW[name].value);
+    // The strings ring on every beat and die down until the next, only with a song playing; silent they rest.
+    if (strings) STRUM.value = AUDIO.playing && !reduced ? perf * (1 - phase) ** 2 : 0;
+    // The controller: with a song playing one button per beat snaps down, holds and lets go (the D-pad tips
+    // towards a different arm each round); the stick circles once every two beats.
+    if (R.presses.length) {
+      const hit = AUDIO.playing && !reduced ? Math.floor(s.beat) % R.presses.length : -1;
+      const env = phase < 0.12 ? phase / 0.12 : phase < 0.45 ? 1 : Math.max(0, 1 - (phase - 0.45) / 0.3);
+      for (let i = 0; i < R.presses.length; i++) {
+        const p = R.presses[i];
+        const k = i === hit ? env * perf : 0;
+        if (p.dpad) {
+          const arm = Math.floor(s.beat / R.presses.length) % 4;
+          const a = DPAD_TIP * k * (arm < 2 ? 1 : -1);
+          p.o.quaternion.copy(p.restQ).multiply(tmpQ.setFromAxisAngle(arm % 2 ? Y_AXIS : X_AXIS, a));
+        } else p.o.position.copy(p.rest).addScaledVector(p.dir, k * p.depth);
+        if (p.mesh) p.mesh.userData.pressed = k;
+      }
+    }
+    if (R.stick) {
+      // the controller's up is the pivot's local z after export, so it tilts about x and y (z only spins it)
+      const a = s.beat * Math.PI;
+      R.stick.rotation.set(Math.sin(a) * STICK * perf, Math.cos(a) * STICK * perf, 0);
+    }
+    // Rise towards the viewer along the camera ray through its centre: it stays where the drawing has it and
+    // just comes closer. No turn (user, 7 Nov).
+    const e = lift * lift * (3 - 2 * lift);
+    tmpM.makeTranslation(tmpV.copy(R.toCamera).multiplyScalar(R.size * (spec.rise ?? RISE) * e + hop));
+    if (spec.shrink) {
+      // A prop much larger than the sleeve shrinks as it rises, towards where it enters the sleeve (sleeve units on
+      // the front), so on the full-page canvas it pokes out without covering the page (user, 10 Nov). It lands at
+      // the drawing's size.
+      const { to, at } = spec.shrink;
+      const k = 1 + (to - 1) * e;
+      tmpM
+        .multiply(tmpT.makeTranslation(at[0], at[1], frontZ))
+        .multiply(tmpQM.makeScale(k, k, k))
+        .multiply(tmpT.makeTranslation(-at[0], -at[1], -frontZ));
+    }
+    // At the handoff: the image-space fit onto Karu's ink, exact for the head-on camera (rotation and scale
+    // about the optical axis, shift as a shear along the view). It relaxes as the hero rises.
+    const f = 1 - e;
+    const { rot, scale, shift: t } = spec.fit;
+    const cam = viewDistance + frontZ;
+    imageSim(tmpF, rot * f, 1 + (scale - 1) * f, t[0] * f, t[1] * f, cam, viewDistance);
+    // Never moved or clipped to fit the sleeve: it stays where the drawing has it and may stick out (user, 7 Nov).
+    g.matrix.multiplyMatrices(R.unpivot, tmpM).multiply(tmpF).multiply(R.place);
+    if (spec.tilt) {
+      // Performing, the sunglasses tilt on their long axis (glTF z) about their middle, so the arms opening away
+      // from the lenses can be seen; level again before they land (user, 8 Nov).
+      const a = spec.tilt * perf;
+      g.matrix
+        .multiply(tmpT.makeTranslation(R.mid.x, R.mid.y, R.mid.z))
+        .multiply(tmpQM.makeRotationAxis(Z_AXIS, a))
+        .multiply(tmpT.makeTranslation(-R.mid.x, -R.mid.y, -R.mid.z));
+    }
+    if (spec.rock) {
+      // The guitar swings out about its body as it rises (page normal = glTF y; positive turns the neck outwards)
+      // and rocks on the beat; it lands level.
+      const a = (spec.rock.out * e + spec.rock.beat * Math.sin(s.beat * Math.PI) * perf) * (reduced ? 0 : 1);
+      const p = R.anchor;
+      g.matrix
+        .multiply(tmpT.makeTranslation(p.x, p.y, p.z))
+        .multiply(tmpQM.makeRotationAxis(Y_AXIS, a))
+        .multiply(tmpT.makeTranslation(-p.x, -p.y, -p.z));
+    }
+    g.matrixWorldNeedsUpdate = true;
+  });
+
+  return (
+    <group ref={group} matrixAutoUpdate={false} visible={false}>
+      <primitive object={scene} />
+      {smoke && <primitive object={smoke.mesh} />}
+      {smoke && <primitive object={smoke.points} />}
+      {strings && <primitive object={strings} />}
+    </group>
+  );
+}
