@@ -23,7 +23,7 @@ import { OUT_SPAN, recordBox } from './frame.js';
 import { coastStep, FACES, TURN } from './turn.js';
 import { AUDIO, BPM } from './heroes.js';
 
-const BACK_URL = new URL('../public/back.ktx2', import.meta.url).href;
+const BACK_URL = new URL('../public/back-uastc.ktx2', import.meta.url).href;
 const LABEL_URL = new URL('../public/label.ktx2', import.meta.url).href;
 const SPINE_URL = new URL('../public/spine.ktx2', import.meta.url).href;
 const FILL_URL = new URL('../public/star-fill.ktx2', import.meta.url).href;
@@ -122,11 +122,11 @@ function useVinylMaterial() {
 }
 
 /**
- * @param {{ face: 'front' | 'back', out: boolean, reduced: boolean, active: string | null, hoverable: boolean,
+ * @param {{ face: 'front' | 'back', out: boolean, reduced: boolean, active: string | null,
  *   spread: { current: number }, onHover: (id: string | null) => void, onSelect: (id: string) => void,
  *   onBlank: () => void, onBack: (id: string | null) => void }} props
  */
-export default function Record({ face, out, reduced, active, hoverable, spread, onHover, onSelect, onBlank, onBack }) {
+export default function Record({ face, out, reduced, active, spread, onHover, onSelect, onBlank, onBack }) {
   const back = useKTX2Texture(BACK_URL);
   const label = useKTX2Texture(LABEL_URL);
   const spine = useKTX2Texture(SPINE_URL);
@@ -291,7 +291,6 @@ export default function Record({ face, out, reduced, active, hoverable, spread, 
           onHover={onHover}
           onSelect={onSelect}
           onBlank={onBlank}
-          hoverable={hoverable}
           selectable={face === 'front'}
         />
         <mesh name="eao-mirror" userData={{ sdf }} position={[0, 0, CARD_Z]} material={mats.card}>

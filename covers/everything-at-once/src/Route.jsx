@@ -16,6 +16,7 @@ import { CEILING } from './budget.js';
 import { createTransport } from './audio.js';
 import { AUDIO, UP } from './heroes.js';
 import { MEMBERS, TRACKS } from './members.js';
+import { TEXT } from './text.js';
 import Record from './Record.jsx';
 import { MIRROR } from './materials.js';
 import { FOV, FRONT_Z, VIEW_DISTANCE } from './Diorama.jsx';
@@ -35,7 +36,6 @@ const FONTS = [
 ];
 const PEEKS = 2; // the guidance: the disc peeks out and back this many times after the opening
 const PEEK_TIME = 2; // s per peek (out, then back)
-const HOVER_GRACE = 300; // ms a hover preview outlives the pointer leaving it, so it can reach the text
 // Sketchfab sources recorded in docs/ktx2-note.md.
 const MODEL_CREDITS = [
   ['Ship in a bottle', 'Loïc Norgeot', 'CC BY-NC 4.0'],
@@ -82,13 +82,6 @@ const bindFore = (el) => {
   };
 };
 const bindVinyl = bindZone('vinylZone', 4);
-const STATUS = {
-  off: () => '',
-  loading: (song) => `Loading ${song}…`,
-  playing: (song) => `Now playing: ${song}`,
-  blocked: () => 'The browser blocked the sound. Tap the disc to try again.',
-  missing: (song) => `${song}: no recording on this page yet.`,
-};
 
 // Local Phase A probes (src/probe/, git-ignored), dev server only: ?probe=<name> loads ./probe/<Name>Probe.jsx.
 // The DEV guard keeps them out of production builds even when the files exist locally.
@@ -117,7 +110,7 @@ class SceneBoundary extends Component {
     this.props.onError?.(); // the route shows its poster again, even after the scene had loaded
   }
   render() {
-    return this.state.failed ? <p className="eao__failed">The 3D record could not load. The cover shown is Karu&apos;s artwork.</p> : this.props.children;
+    return this.state.failed ? <p className="eao__failed">{this.props.message}</p> : this.props.children;
   }
 }
 
@@ -161,10 +154,12 @@ function CoverRoute() {
   const [search] = useSearchParams();
   const debug = search.has('debug');
   const fps = search.get('debug') === 'fps'; // ?debug=fps: frame-rate overlay for the hardware/phone gates
-  const [hovered, setHovered] = useState(null);
   // ?pin=<member> opens with that member selected; anything else starts at rest.
   const [pinned, setPinned] = useState(() => byId(search.get('pin'))?.id ?? null);
   const [face, setFace] = useState('front');
+  // language of the page: the browser's if Spanish, else English; the corner switch flips it
+  const [lang, setLang] = useState(() => (navigator.language?.startsWith('es') ? 'es' : 'en'));
+  const t = TEXT[lang];
   const [out, setOut] = useState(false);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -176,7 +171,6 @@ function CoverRoute() {
   const opening = useRef(false);
   const guide = useRef(0); // when the guidance started (0: not running)
   const pendingOpening = useRef(false);
-  const leave = useRef(0); // the hover preview's exit-grace timer
   const flickedAt = useRef(0); // when the last drag ended: its pointer-up/click is not a tap
   const [sound, setSound] = useState({ state: 'off', song: null });
   useEffect(() => {
@@ -215,11 +209,10 @@ function CoverRoute() {
     if (reduced) settle();
   }, [reduced, settle]);
 
-  // Hover previews only on the front with the vinyl put away and nobody selected: once a member is chosen
-  // only a click changes it (user, 7 Nov). With the vinyl out the retained member performs to its song; on
-  // the back nobody does (the selection is kept).
-  const hoverable = face === 'front' && !out;
-  const active = face !== 'front' ? null : (pinned ?? (out ? null : hovered));
+  // Members are chosen by a click, a tap or a key only; hovering a side shows the pointer cursor and nothing else
+  // (user, 10 Nov: "eliminate the hover, just clicking"). With the vinyl out the chosen member performs to its
+  // song; on the back nobody does (the selection is kept).
+  const active = face !== 'front' ? null : pinned;
   const member = byId(active ?? pinned);
   const lit = byId(active); // the presented member (the backdrop star takes their tint: Record.jsx)
   const verdict = withinCeiling(budget, CEILING);
@@ -232,7 +225,6 @@ function CoverRoute() {
     });
     return () => faces.forEach((f) => document.fonts.delete(f));
   }, []);
-  useEffect(() => () => clearTimeout(leave.current), []);
   useEffect(() => {
     document.documentElement.classList.add('route-everything-at-once');
     resetTurn(); // one record at a time: the gesture state is module-level
@@ -268,9 +260,7 @@ function CoverRoute() {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  useEffect(() => {
-    document.body.style.cursor = hovered ? 'pointer' : 'auto';
-  }, [hovered]);
+  useEffect(() => () => (document.body.style.cursor = ''), []);
 
   // The record's sound: out plays the retained member's song (or the interlude), in pauses.
   useEffect(() => {
@@ -292,32 +282,17 @@ function CoverRoute() {
   }, []);
 
   const dismiss = useCallback(() => {
-    clearTimeout(leave.current);
     setPinned(null);
-    setHovered(null); // Escape used to leave the hovered/focused member visible
   }, []);
   /** Choose a member: from the back, return to the front first. The vinyl stays where it is. */
   const choose = useCallback((id, toggle = true) => {
     if (Date.now() - flickedAt.current < 300) return; // the pointer-up that ended a flick is not a tap
     setFace('front');
-    setPinned((p) => {
-      if (toggle && p === id) {
-        setHovered(null); // a repeat selection dismisses the preview too
-        return null;
-      }
-      return id;
-    });
+    setPinned((p) => (toggle && p === id ? null : id));
   }, []);
-  // Hover previews come from a mouse only: a tap also fires enter/move events, which would leave the
-  // tapped member previewed after a phone user dismissed it. Leaving clears the preview after a short grace,
-  // so the pointer can cross from the side and its hero to the text beside them.
-  const preview = (id, pointerType = 'mouse') => {
-    if (!hoverable || pointerType !== 'mouse' || (TURN.mode !== 'idle' && TURN.mode !== 'pending')) return;
-    clearTimeout(leave.current);
-    if (id) setHovered(id);
-    // ... unless the pointer has reached the text by then (its pointerenter does not always arrive: crossing from
-    // the canvas straight onto it, React missed it)
-    else leave.current = setTimeout(() => TURN.fore?.matches(':hover') || setHovered(null), HOVER_GRACE);
+  /** The pointer over a member's side: a hand cursor says it can be clicked. */
+  const pointAt = (id) => {
+    document.body.style.cursor = id && TURN.mode === 'idle' ? 'pointer' : '';
   };
   // Turning keeps the vinyl where it is: extraction survives a turn.
   const turnOver = () => setFace((v) => (v === 'front' ? 'back' : 'front'));
@@ -379,8 +354,7 @@ function CoverRoute() {
   const onPointerMove = (e) => {
     // the mouse button came up where we never heard it: end the gesture as cancelled
     if (e.pointerType === 'mouse' && e.buttons === 0 && e.pointerId === TURN.id) return endTurn(e, true);
-    const was = TURN.mode;
-    if (move(e) && was === 'pending') setHovered(null); // the drag parks any hover preview
+    if (move(e)) pointAt(null);
   };
   const endTurn = (e, cancel) => {
     const r = release(e, cancel, reduced);
@@ -396,13 +370,13 @@ function CoverRoute() {
 
 
   return (
-    <main ref={root} className="eao" data-ready={ready || failed} onKeyDown={onKeyDown} onPointerDownCapture={settle}>
+    <main ref={root} className="eao" lang={lang} data-ready={ready || failed} onKeyDown={onKeyDown} onPointerDownCapture={settle}>
       <div className="eao__stage" data-lit={!!lit}>
         <div
           ref={stage}
           tabIndex={0}
           role="group"
-          aria-label="The record"
+          aria-label={t.record}
           aria-describedby="eao-hint"
           className="eao__cover"
           onPointerDown={onPointerDown}
@@ -413,7 +387,7 @@ function CoverRoute() {
         >
           {/* Karu's cover until the 3D record has loaded (and if it fails); its box is the record's rest box. */}
           <img className="eao__poster" src={POSTER_URL} alt="" data-shown={!ready || failed} />
-          <SceneBoundary onError={() => setFailed(true)}>
+          <SceneBoundary message={t.failed} onError={() => setFailed(true)}>
             <Canvas
               flat
               dpr={dpr}
@@ -433,9 +407,8 @@ function CoverRoute() {
                   out={out}
                   reduced={reduced}
                   active={active}
-                  hoverable={hoverable}
                   spread={spread}
-                  onHover={preview}
+                  onHover={pointAt}
                   onSelect={choose}
                   onBlank={onBlank}
                   onBack={onBack}
@@ -459,29 +432,29 @@ function CoverRoute() {
         </div>
 
         {/* The presented member, in the page's left column (Record shows it while the hero performs); on phones
-            a band above the gallery navigation. Hovering it keeps a hover preview alive. */}
+            a band above the gallery navigation. */}
         <section
           ref={bindFore}
           className="eao__fore"
-          aria-label="Band member"
+          aria-label={t.member}
           data-shown="false"
           style={member ? { '--tint': member.tint } : undefined}
-          onPointerEnter={() => clearTimeout(leave.current)}
-          onPointerLeave={(e) => preview(null, e.pointerType)}
         >
           <div className="eao__info" aria-live="polite">
             {member && (
               <>
                 <h2>{member.name}</h2>
-                <p className="eao__role">{member.role}</p>
-                {member.about && <p>{member.about}</p>}
+                <p className="eao__role">{t.roles[member.role]}</p>
+                <p className="eao__about" lang={member.aboutLang ?? lang} tabIndex={0}>
+                  {member.about[lang]}
+                </p>
                 <p className="eao__song">
-                  Song: <cite>{member.song}</cite>
+                  {t.song} <cite lang="en">{member.song}</cite>
                 </p>
               </>
             )}
           </div>
-          {member && <img className="eao__band" src={member.band} alt={`${member.name} in Karu's drawing of the band`} width="180" height="240" />}
+          {member && <img className="eao__band" src={member.band} alt={t.bandAlt(member.name)} width="180" height="240" />}
         </section>
       </div>
 
@@ -493,7 +466,7 @@ function CoverRoute() {
       </header>
 
       {/* Named controls for keyboards and screen readers: visually hidden until one is focused. */}
-      <nav className="eao__sr" aria-label="Members and record">
+      <nav className="eao__sr" aria-label={t.controls}>
         <ul className="eao__members">
           {MEMBERS.map((m, i) => (
             <li key={m.id}>
@@ -502,10 +475,6 @@ function CoverRoute() {
                 style={{ '--tint': m.tint }}
                 aria-pressed={pinned === m.id}
                 aria-keyshortcuts={String(i + 1)}
-                onPointerEnter={(e) => preview(m.id, e.pointerType)}
-                onPointerLeave={() => setHovered(null)}
-                onFocus={(e) => e.target.matches(':focus-visible') && preview(m.id)} // keyboard focus, not a tap
-                onBlur={() => setHovered(null)}
                 onClick={() => choose(m.id)}
               >
                 {m.name}
@@ -515,24 +484,24 @@ function CoverRoute() {
         </ul>
         <div className="eao__controls">
           <button type="button" aria-keyshortcuts="ArrowLeft ArrowRight" onClick={turnOver}>
-            {face === 'front' ? 'Turn the record over' : 'Show the front'}
+            {face === 'front' ? t.turnOver : t.showFront}
           </button>
           <button type="button" aria-expanded={out} aria-keyshortcuts="Space Enter" onClick={() => vinylAction()}>
-            {out ? 'Put the record away' : 'Slide the record out'}
+            {out ? t.putAway : t.slideOut}
           </button>
           {sound.state === 'blocked' && (
             <button type="button" onClick={() => transport.current?.unlock()}>
-              Try the sound again
+              {t.retry}
             </button>
           )}
           {pinned && (
             <button type="button" aria-keyshortcuts="Escape" onClick={dismiss}>
-              Close member
+              {t.close}
             </button>
           )}
         </div>
-        <section className="eao__tracks" aria-label="Tracklist">
-          <h2>Tracklist</h2>
+        <section className="eao__tracks" aria-label={t.tracklist}>
+          <h2>{t.tracklist}</h2>
           <ol>
             {TRACKS.map((t) => {
               const owner = MEMBERS.find((m) => m.song === t);
@@ -552,33 +521,43 @@ function CoverRoute() {
         </section>
       </nav>
 
+      <button
+        type="button"
+        className="eao__corner eao__lang"
+        lang={lang === 'es' ? 'en' : 'es'}
+        aria-label={t.switchTo}
+        onClick={() => setLang(lang === 'es' ? 'en' : 'es')}
+      >
+        {lang === 'es' ? 'EN' : 'ES'}
+      </button>
+
       {/* The corners: credits top right, the hint bottom left, the sound's status bottom right. */}
       <footer className="eao__foot">
         <p className="eao__corner eao__hint" id="eao-hint">
-          Drag the sleeve to turn it. Pull the record out or tap its edge.
-          <span className="eao__sr-only"> Keys: arrows turn it, Space or Enter slides the record, 1 to 5 pick a member, Escape closes.</span>
+          {t.hint}
+          <span className="eao__sr-only">{t.keys}</span>
         </p>
         <p className="eao__corner eao__status" aria-live="polite">
-          {STATUS[sound.state](sound.song)}
+          {t.status[sound.state](sound.song)}
         </p>
         <div className="eao__corner eao__credits">
           <p>
-            All illustrations, cover included:{' '}
+            {t.illustrations}{' '}
             <a href="https://www.linkedin.com/in/laura-carvajal-martin/" target="_blank" rel="noreferrer">
               Karu
             </a>
-            . All 3D work:{' '}
+            {t.work3d}{' '}
             <a href="https://www.linkedin.com/in/guillermo-sirera-738752225/" target="_blank" rel="noreferrer">
               Guille
             </a>{' '}
-            (Texas Red). Used with permission.
+            {t.permission}
           </p>
           <details>
-            <summary>3D model credits</summary>
+            <summary>{t.modelCredits}</summary>
             <ul>
               {MODEL_CREDITS.map(([title, author, licence]) => (
                 <li key={title}>
-                  “{title}” by {author}, {licence}; modified (reduced, retextured).
+                  {t.modelCredit(title, author, licence)}
                 </li>
               ))}
             </ul>

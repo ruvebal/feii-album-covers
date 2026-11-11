@@ -105,13 +105,54 @@ html.route-everything-at-once {
   pointer-events: none;
 }
 
+.eao__about {
+  max-height: max(6rem, calc(100dvh - 34rem)); /* long texts scroll instead of covering the corners */
+  overflow-y: auto;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  white-space: pre-line;
+  scrollbar-width: thin;
+}
+
+.eao__about:focus-visible {
+  outline: 2px solid var(--eao-star);
+  outline-offset: 2px;
+}
+
+/* The language switch for the page: small and quiet in the bottom-right corner, under the status. */
+.eao__lang {
+  right: var(--eao-edge);
+  bottom: 1rem;
+  padding: 0.2rem 0.4rem;
+  font: 600 0.7rem / 1 ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  color: inherit;
+  background: none;
+  border: 1px solid rgb(244 236 248 / 25%);
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.eao[data-ready='true'] .eao__lang {
+  opacity: 0.55;
+}
+
+.eao[data-ready='true'] .eao__lang:is(:hover, :focus-visible) {
+  opacity: 1;
+}
+
+.eao__lang:focus-visible {
+  outline: 2px solid var(--eao-star);
+  outline-offset: 2px;
+}
+
 .eao__fore[data-shown='true'] {
   opacity: 1;
   pointer-events: auto;
 }
 
 .eao__info {
-  max-width: 14rem;
+  max-width: 100%;
 }
 
 .eao__info:empty {
@@ -307,6 +348,7 @@ html.route-everything-at-once {
 @media (max-width: 52rem) {
   .eao {
     --eao-edge: 1rem;
+    --eao-nav: 8.5rem; /* the gallery's buttons stack taller here */
   }
 
   .eao__fore {
@@ -322,6 +364,12 @@ html.route-everything-at-once {
 
   .eao__band {
     height: clamp(7rem, 20vh, 10rem);
+  }
+
+  .eao__about {
+    /* what is left between the record and the navigation, after the name, role and song */
+    max-height: max(2.6rem, min(20dvh, calc(100dvh - var(--eao-ry, 50%) - var(--eao-rs, 60vmin) / 2 - var(--eao-nav) - 8.5rem)));
+    font-size: 0.85rem;
   }
 
   .eao__mark {

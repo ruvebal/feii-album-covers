@@ -22,6 +22,10 @@
 // +1 geometry in every state, +0 textures. The canvas is now the viewport, so hero parts beyond the sleeve's edge are
 // no longer culled (Javi's controller): rest calls 17, triangles 345, geometries 17, textures 18; Javi selected
 // calls 38, triangles 15071, geometries 28, textures 19 (Lucy/Pavlo 26, Andrés 22, Guille 21 calls).
+// 10 Nov, step 7: a hero stays on the GPU once shown, so switching back is instant (no refetch, no transcode
+// hitch). Geometries and textures are counts of what is resident, so the ceiling is the worst case: all five
+// heroes visited (Javi, Lucy, Pavlo, Andrés, Guille): geometries 44, textures 23. Calls and triangles are per
+// frame and unchanged. The back face is now UASTC (task3): same count, same GPU bytes as ETC1S on BC7.
 
 /** @type {import('../../../src/lib/types.js').Ceiling | null} */
-export const CEILING = { calls: 38, triangles: 25000, geometries: 28, textures: 19 };
+export const CEILING = { calls: 38, triangles: 25000, geometries: 44, textures: 23 };
