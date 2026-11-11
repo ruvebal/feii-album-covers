@@ -1,15 +1,12 @@
 # Shader note
 
-The star's infinity mirror: `mirrorMaterial` in `src/materials.js` (TSL), the material of the card plane under the layers.
+The star's infinity mirror: `mirrorMaterial` in `src/materials.js` (TSL), on the card plane under the layers.
 
-1. Vertex vs fragment: all the work is in the fragment stage; the vertex stage only places the 2 × 2 card plane.
-2. Uniforms: `MIRROR.amount` (0 at rest: head-on the star is Karu's cover; up to 1 while the record turns, tilts or opens), `MIRROR.shimmer` (the lights' phase), `MIRROR.cam` (the camera in the card's own space, written every frame) and `MIRROR.tint`/`tintMix` (the active member). They change every frame, so they cannot be constants.
-3. Coordinate space: the card's local position for the rays (camera → fragment, continued to depth 0.04k + 0.012k², about the star's own centre; the first echoes shrink without sliding, the deeper ones swing with the turn) and its uv for the yellow. In view space the echoes would stay put while the sleeve turns; in local space they slide and shrink with perspective, like the reflections in a mirror box.
-4. Precision: highp (32-bit floats on WebGPU, three's default on WebGL 2): the rays divide by the camera's depth, a small denominator at grazing angles.
-5. Effect: eight star outlines receding inside the star while the record moves, each repeating Karu's drawn star (the opening her drawing leaves, starting under her ink) and lined with soft lights (white core, pink halo, screened) whose shimmer runs around and down the tunnel. Each is a signed-distance band (`smoothstep` on |d|, antialiased with `fwidth`), 0.7 fainter than the one before, printed as two riso inks multiplied onto the yellow: purple (or a shade of the active member's colour) over a slightly misregistered magenta.
-6. Post-pass: zero. The mirror replaces the card's material, so the draw calls stay the same (16 at rest; `renderer-info.md`, task2 row).
-7. Samplers: `star-fill.ktx2` is the star's yellow with its print grain, cut from Karu's cover. It is looked up at vUv, the sleeve's own UV, so the print stays on the sleeve as it turns. `star-sdf.ktx2` is the star's signed distance (RG8 data: her outline's distance and its lights'; linear, NoColorSpace). My effect moves the place it is looked up: one ray per echo, `q = p + (p − cam) · z / cam.z`.
-
-## The page behind the record
-
-`backdropMaterial` (same file) paints the whole canvas: one full-screen quad, its vertex stage writing clip space directly at the far end of the depth range, drawn after the opaque sleeve so the pixels it covers are never shaded (+1 draw call, no texture). Everything is computed in the fragment stage from the screen position in CSS px (`screenUV` × the canvas size). One regular five-point star with straight edges (an exact signed distance, Inigo Quilez's `sdStar5`), centred on the record's star as Record.jsx projects it each frame, so it follows the record as it turns: a ~2 px band in the star's yellow or the selected member's colour over a misregistered magenta, with a halo and a shimmer running around it. Its strength follows `MIRROR.amount` from a resting 0.35, and it pulses on the song's beat (`BACKDROP.pulse`). Around it: twelve four-point glints, each twinkling on its own clock (hashed positions); a 45° halftone whose dots swell with a slow noise, plus a fixed paper grain; 28 dust specks drifting up; and with the record playing, sound rings leaving the disc once per beat. Under reduced motion the time and the pulse stay still.
+1. Stage: all the work is in the fragment stage; the vertex stage only places the card.
+2. Uniforms: `MIRROR.amount` (0 at rest, up to 1 while the record turns or opens), `MIRROR.shimmer` (the lights' phase), `MIRROR.cam` (the camera in the card's space) and `MIRROR.tint` (the selected member's colour). They change every frame.
+3. Coordinate space: the card's local space. Each echo is a ray from the camera through the fragment, continued deeper into the card (`q = p + (p − cam) · z / cam.z`), so the echoes shrink and slide with perspective like the reflections in a mirror box.
+4. Samplers: `star-fill.ktx2` (the star's printed yellow, at the sleeve's UV) and `star-sdf.ktx2` (the star's signed distance, linear data).
+5. Effect: eight star outlines receding into the star, each 0.7 fainter than the last, lined with soft lights that run down the tunnel, printed as purple over a misregistered magenta.
+6. Precision: highp; the rays divide by the camera's depth, which gets small at grazing angles.
+7. Cost: no post-processing pass and no extra draw call (it replaces the card's material).
+8. The page behind the record (`backdropMaterial`, same file): one full-screen quad drawn after the sleeve, with a straight five-point star (Inigo Quilez's `sdStar5`) that follows the record and pulses on the beat, plus glints, halftone, dust and sound rings; it stays still under reduced motion.
