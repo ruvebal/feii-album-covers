@@ -1,7 +1,8 @@
 // Scene.jsx — árbol R3F de la ruta (dentro del <Canvas> de Route.jsx).
 //
 // t < WORLD_FROM: vacío negro con la portada (CoverPortal).
-// t ≥ WORLD_FROM: cielo + estadio + Freddie + multitud (grupo `world`).
+// t ≥ WORLD_FROM: cielo + luces (SkyLights) + estadio + Freddie + multitud con móviles (grupo `world`).
+// La hora del día (progress.tod) mueve el cielo, las luces y la multitud a la vez.
 // task1 usa placeholders procedurales (placeholders.js); el camino GLB está en
 // stadiumGlb.js detrás de USE_GLB. Las geometrías creadas aquí se liberan al desmontar.
 
@@ -12,13 +13,18 @@ import CameraRig from './CameraRig.jsx';
 import CoverPortal from './CoverPortal.jsx';
 import Crowd from './Crowd.jsx';
 import RendererInfo from './RendererInfo.jsx';
+import SkyLights from './SkyLights.jsx';
 import SunsetSky from './SunsetSky.jsx';
 import { WORLD_FROM } from './keys.js';
 import { makeFan, makeFreddie, makeMic, makeStadium, makeStage } from './placeholders.js';
 import { USE_GLB, useStadiumGLTF } from './stadiumGlb.js';
 
-/** Estadio, escenario, Freddie, micro y multitud con geometría procedural. */
-function ProceduralWorld() {
+/**
+ * Estadio, escenario, Freddie, micro y multitud con geometría procedural.
+ *
+ * @param {{ progress: import('react').RefObject<{ tod: number }>, reduced: boolean }} props
+ */
+function ProceduralWorld({ progress, reduced }) {
   const geo = useMemo(
     () => ({
       stadium: makeStadium(),
@@ -45,7 +51,7 @@ function ProceduralWorld() {
       <mesh name="Mic" geometry={geo.mic}>
         <meshStandardMaterial color="#1c1c1f" metalness={0.6} roughness={0.35} />
       </mesh>
-      <Crowd geometry={geo.fan} />
+      <Crowd geometry={geo.fan} progress={progress} reduced={reduced} />
     </>
   );
 }
@@ -54,9 +60,9 @@ function ProceduralWorld() {
  * task3: el GLB de Blender. Los nodos Fan_LOD0/Fan_LOD1 se ocultan: la multitud
  * los instancia (posiciones en JS). INACTIVO mientras USE_GLB = false.
  *
- * @param {{ url: string }} props
+ * @param {{ url: string, progress: import('react').RefObject<{ tod: number }>, reduced: boolean }} props
  */
-function GlbWorld({ url }) {
+function GlbWorld({ url, progress, reduced }) {
   const { scene, nodes } = useStadiumGLTF(url);
   useEffect(() => {
     ['Fan_LOD0', 'Fan_LOD1'].forEach((name) => {
@@ -66,7 +72,7 @@ function GlbWorld({ url }) {
   return (
     <>
       <primitive object={scene} />
-      {nodes.Fan_LOD0 ? <Crowd geometry={nodes.Fan_LOD0.geometry} /> : null}
+      {nodes.Fan_LOD0 ? <Crowd geometry={nodes.Fan_LOD0.geometry} progress={progress} reduced={reduced} /> : null}
     </>
   );
 }
@@ -101,14 +107,14 @@ export default function Scene({ run, started, onEnter, onHoverPortal, skip, redu
 
       <group ref={world} visible={false}>
         <SunsetSky progress={progress} reduced={reduced} />
-        <ambientLight intensity={0.35} color="#ffb98a" />
-        {/* Sol bajo sobre la grada que Freddie tiene delante (−Z): desde detrás (cámara MATCH) queda a
-            contraluz y a la izquierda de cámara (−X), como en la portada. */}
-        <directionalLight position={[-5, 6, -40]} intensity={2.2} color="#ffb870" />
-        {/* Foco violeta (task2: sube con la noche, ligado a uTod). */}
-        <spotLight position={[-6, 12, -8]} angle={0.5} penumbra={1} intensity={80} color="#9a4dff" />
+        {/* Sol, ambiente y focos violetas ligados a la hora del día (tod). */}
+        <SkyLights progress={progress} />
         {/* TODO(task3): <Suspense><GlbWorld url={MODEL_URL} /></Suspense> (ver stadiumGlb.js). */}
-        {USE_GLB ? <GlbWorld url="" /> : <ProceduralWorld />}
+        {USE_GLB ? (
+          <GlbWorld url="" progress={progress} reduced={reduced} />
+        ) : (
+          <ProceduralWorld progress={progress} reduced={reduced} />
+        )}
       </group>
 
       <CoverPortal progress={progress} idle={!started} reduced={reduced} onEnter={onEnter} onHover={onHoverPortal} />
