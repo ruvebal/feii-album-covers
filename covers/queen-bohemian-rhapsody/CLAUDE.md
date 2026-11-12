@@ -1,0 +1,65 @@
+# Queen — Bohemian Rhapsody · 3D cover (feii-album-covers)
+
+Este archivo vive en `covers/queen-bohemian-rhapsody/CLAUDE.md`. Lanza `claude` desde la raíz del repo y lee también
+`CONTRIBUTING.md` y `.cursor/rules/*` (00-project, 20-r3f-patterns, 30-shaders, 40-asset-pipeline, 50-performance).
+Si algo de aquí contradice al repo, gana el repo.
+
+## Frontera (CONTRIBUTING)
+- Solo se toca `covers/queen-bohemian-rhapsody/**` + UN objeto en `covers/registry.json` (ordenado por slug, una línea por objeto).
+- NUNCA: `src/App.jsx`, `src/gallery/`, `src/lib/`, `scripts/`, `public/` (raíz), `.github/`, `.gitignore`, `covers/_studio`, `covers/_template`, otras covers.
+- Assets de la ruta en `covers/queen-bohemian-rhapsody/public/`, referenciados con `new URL('../public/x', import.meta.url).href`.
+- Transcoder Basis ya vendorizado en `public/basis/`: NO copiarlo. Ruta compartida en `src/lib/ktx2.js` (`TRANSCODER_PATH`), medir con `src/lib/gpuBytes.js`.
+- Si usas `extend`, clave única con prefijo del slug (o forma componente). `npm run lint` lo comprueba.
+- Al desmontar: dispose de texturas/geometrías propias, quitar listeners y rAF, quitar la clase `route-queen-bohemian-rhapsody`.
+- Antes de push: `npm run lint && npm run build`.
+
+## Mapa de archivos (src/)
+| Archivo | Qué hace |
+| --- | --- |
+| `Route.jsx` | Canvas, estado idle → «Entrar», overlay DOM (título, Entrar, Saltar/Repetir intro, Escape, aria-live), cursor en hover, reduced-motion, BudgetProbe |
+| `Scene.jsx` | Árbol R3F: portada → mundo (cielo, luces, estadio, Freddie, multitud); `USE_GLB` elige placeholders o GLB |
+| `keys.js` | Match cut calculado (`MATCH`, `SLEEVE_CENTER`, `SLEEVE_SIZE`, `IDLE_CAMERA`), zoom (`FLIGHT_FROM`, `ZOOM_FOV`), keyframes del vuelo (`KEYS`), `PORTAL_FADE`, `WORLD_FROM` |
+| `CameraRig.jsx` | Idle: `OrbitControls` sobre la funda → acercamiento a `MATCH` → zoom de FOV (match cut) → vuelo Catmull-Rom → `CameraControls`; teclas dev |
+| `SunsetSky.jsx` | Skybox con shader propio (`uTime`, `uTod`, `uSunDir`): degradado, sol, nubes fbm, star trails. Nota: `docs/shader-note.md` |
+| `sky.js` | `SKY_PERIOD` (envuelve uTime), `BEAT_HZ` (72 bpm), `sunDirection(tod)` compartida por cielo y luces |
+| `SkyLights.jsx` | Sol direccional, ambiente y 2 focos violetas ligados a `tod` |
+| `CoverPortal.jsx` | Disco en su funda (portada delante/detrás + vinilo asomando): balanceo en idle, clic = entrar, se desvanece |
+| `sleeveArt.js` | Imagen de la funda: procedural propia o `public/sleeve.png` (`SLEEVE_URL`) |
+| `Crowd.jsx` | Multitud = 1 `InstancedMesh` (bote en vertex shader, `aPhase`) + móviles en 1 `Points`; posiciones con PRNG con semilla |
+| `placeholders.js` | Geometría procedural con los nombres/medidas del futuro GLB |
+| `stadiumGlb.js` | Camino GLTF + KTX2 + meshopt (inactivo hasta task3) |
+| `RendererInfo.jsx` | `console.table` de renderer.info en portada / plano ancho / plano final |
+
+## Ejes de la escena (contrato con Blender)
+Metros, +Y arriba. Freddie en el origen, pies en y = 0, mirando a −Z, cara a ~1,72 m; pose = la figura de `public/sleeve.png` vista por detrás (puño en alto en −X, micro delante en +X) porque el match cut de `keys.js` depende de ello: si se cambia la pose (Blender o `make-sleeve.mjs`), revisar `FIGURE`/`FREDDIE` en `keys.js`. Superficie del escenario y = 0,
+césped y = −1,6. Sol hacia −Z (delante de Freddie, sobre la grada que mira), ligeramente a −X: desde detrás (cámara MATCH en +Z) queda a contraluz y a la izquierda de cámara, como en la portada. El vuelo arranca POR DETRÁS (`VIEW_DIR = −1` en `keys.js`). Grada desde r = 24 m. Fans: +Z local apunta al escenario.
+
+## Flujo de PRs (rama: `cover-queen-bohemian-rhapsody-task<N>-<tema>`, nunca push a main)
+- task1: Route.jsx + registry + `public/thumbnail.svg` + `docs/renderer-info.md` (mesh/cámara/escena)
+- task2: shader propio (`SunsetSky.jsx`) + `docs/shader-note.md`
+- task3: KTX2 (ETC1S/UASTC) + `docs/ktx2-note.md` (bytes de archivo y GPU) + `docs/ai-3d-merge-log.md`
+- task4: arreglo en otro slug + una review formal
+- Cada PR lleva la tabla **AI Review Log** (qué hizo la IA / qué verifiqué yo). Los PRs los abre el humano.
+
+## Derechos (D8) — repo PÚBLICO con GitHub Pages
+- NO publicar la portada oficial ni el vídeo de referencia. Solo referencia local en `reference/` (excluido en `.git/info/exclude`).
+- Arte propio / PD / licencia abierta. Registrar creador, fuente, licencia en `docs/ktx2-note.md`.
+- Freddie = maniquí estilizado: sin parecido facial realista, sin image-to-3D ni texturas a partir de fotos.
+
+## Referencia visual (vídeo 16.5 s)
+Portada flotando en vacío → atraviesa → estadio al atardecer (Freddie a contraluz) → push-in → contrapicado →
+tras él → primer plano cara (focos violetas) → baja a cinturón/micro → cielo nocturno con star trails
+→ plano final con fan-maniquí. Estética: maniquíes estilizados, luces de móviles, haces de luz.
+
+## Presupuesto GPU
+Tope del curso: ≤ 200 draw calls desktop, ≤ 80 móvil; techo propio en `src/budget.js` (`CEILING`) + `docs/renderer-info.md`.
+Objetivo propio: ≤ 600k tris, ≤ 40 draw calls, ≤ 3 atlas 2048², GLB < 15 MB. Multitud = InstancedMesh (posiciones en JS).
+Freddie 15–25k · estadio bakeado ≤ 20k · Stage+Mic ≤ 3k · Fan_LOD0 ~400 · Fan_LOD1 ~100.
+
+## Dev tools en CameraRig (solo `npm run dev`)
+La ruta arranca en idle (arrastrar orbita el disco); entra con clic en la funda o «Entrar». Después: Espacio pausa · ←/→ scrub · S salta al final · **P imprime keyframe** para pegar en `keys.js` (ignoradas con foco en un botón). Escape (también en build) salta la intro una vez empezada.
+
+## Blender (Fase 3, vía MCP de Blender) — nombres de nodo exactos
+`Freddie`, `Mic`, `Stage`, `Stadium`, `Fan_LOD0`, `Fan_LOD1`. Export GLB +Y, sin cámaras/luces, luego
+`npx @gltf-transform/cli optimize in.glb out.glb --compress meshopt --texture-compress ktx2` (necesita `toktx`).
+Cada paso generado por IA → fila en `docs/ai-3d-merge-log.md` (ACCEPT / REJECT / ESCALATE).
