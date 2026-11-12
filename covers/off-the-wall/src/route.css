@@ -1,0 +1,1667 @@
+/* /covers/off-the-wall — todo cuelga de .otw (y de .route-off-the-wall en <html>). */
+
+.otw {
+  --otw-cream: #f7e9cf;
+  --otw-brick: #b4553a;
+  --otw-ink: #f4efe6;
+  --otw-glass: rgb(18 12 10 / 0.78);
+  --otw-line: rgb(247 233 207 / 0.22);
+  /* Lado del cuadrado de la portada: igual que frameFraction() en set.js. */
+  --otw-frame: min(78dvh, 86vw);
+  position: relative;
+  height: 100dvh;
+  overflow: hidden;
+  background: #120c0a;
+  color: var(--otw-ink);
+  font-family: 'Oswald', system-ui, sans-serif;
+}
+
+.otw__canvas {
+  position: absolute !important;
+  inset: 0;
+  touch-action: none;
+}
+
+/* Encuadre cuadrado: oscurece lo que queda fuera y pone el título como en un disco. */
+.otw__frame {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--otw-frame);
+  height: var(--otw-frame);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 200vmax rgb(10 6 5 / 0.62);
+  outline: 1px solid rgb(247 233 207 / 0.35);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  padding: calc(var(--otw-frame) * 0.045);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.otw--framed .otw__frame {
+  opacity: 1;
+}
+
+.otw__frame-artist {
+  font-family: 'Yellowtail', cursive;
+  font-size: calc(var(--otw-frame) * 0.07);
+  line-height: 1;
+  color: var(--otw-cream);
+  text-shadow: 0 2px 10px rgb(0 0 0 / 0.45);
+}
+
+.otw__frame-title {
+  margin-top: calc(var(--otw-frame) * 0.01);
+  font-weight: 600;
+  font-size: calc(var(--otw-frame) * 0.045);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--otw-cream);
+  text-shadow: 0 2px 10px rgb(0 0 0 / 0.45);
+}
+
+/* Destello de la cámara al hacer la foto. */
+.otw__flash {
+  position: absolute;
+  inset: 0;
+  background: #fffaf0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.otw__flash.is-on {
+  animation: otw-flash 0.7s ease-out;
+}
+
+@keyframes otw-flash {
+  0% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Panel de controles: arriba a la derecha en escritorio. */
+.otw__panel {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: min(21rem, calc(100vw - 32px));
+  max-height: calc(100dvh - 150px);
+  overflow-y: auto;
+  padding: 16px 18px;
+  border: 1px solid var(--otw-line);
+  border-radius: 14px;
+  background: var(--otw-glass);
+  backdrop-filter: blur(10px);
+  z-index: 5;
+}
+
+.otw__artist {
+  margin: 0;
+  font-family: 'Yellowtail', cursive;
+  font-size: 1.7rem;
+  line-height: 1;
+  color: var(--otw-cream);
+}
+
+.otw__title {
+  margin: 2px 0 0;
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.otw__meta {
+  margin: 4px 0 10px;
+  font-size: 0.82rem;
+  color: rgb(244 239 230 / 0.72);
+}
+
+/* Ocultar/mostrar el panel: también en el ordenador. */
+.otw__head {
+  position: relative;
+}
+
+.otw .otw__toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-height: 34px;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+}
+
+.otw__panel.is-closed {
+  width: auto;
+  min-width: 16rem;
+}
+
+.otw__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+}
+
+.otw__group legend {
+  margin-bottom: 6px;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(244 239 230 / 0.6);
+}
+
+.otw button {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--otw-line);
+  border-radius: 999px;
+  background: rgb(247 233 207 / 0.06);
+  color: var(--otw-ink);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.otw button:hover {
+  background: rgb(247 233 207 / 0.14);
+}
+
+.otw button[aria-pressed='true'] {
+  background: var(--otw-brick);
+  border-color: var(--otw-brick);
+  color: #fff;
+}
+
+.otw button:focus-visible,
+.otw summary:focus-visible {
+  outline: 2px solid var(--otw-cream);
+  outline-offset: 2px;
+}
+
+.otw__caption {
+  margin: 4px 0 6px;
+  font-family: system-ui, sans-serif;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.otw__notice {
+  min-height: 1.3em;
+  margin: 0 0 8px;
+  font-family: system-ui, sans-serif;
+  font-size: 0.85rem;
+  color: var(--otw-cream);
+}
+
+.otw__help {
+  margin: 0 0 10px;
+  font-family: system-ui, sans-serif;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: rgb(244 239 230 / 0.7);
+}
+
+.otw kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  margin-right: 2px;
+  padding: 0 4px;
+  border: 1px solid var(--otw-line);
+  border-radius: 4px;
+  font-family: inherit;
+  text-align: center;
+}
+
+.otw__tracks {
+  font-family: system-ui, sans-serif;
+  font-size: 0.85rem;
+}
+
+.otw__tracks h2 {
+  margin: 4px 0 6px;
+  font-family: 'Oswald', system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(244 239 230 / 0.6);
+}
+
+.otw__tracks ol {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Cada canción es un botón a lo ancho, como una pista del disco. */
+.otw button.otw__track {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 30px;
+  padding: 3px 10px;
+  border-radius: 8px;
+  border-color: transparent;
+  background: transparent;
+  text-align: left;
+  font-family: system-ui, sans-serif;
+  font-size: 0.86rem;
+  overflow: hidden;
+}
+
+.otw button.otw__track:hover {
+  border-color: var(--otw-line);
+}
+
+.otw__track-n {
+  min-width: 1.3em;
+  color: rgb(244 239 230 / 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.otw__track-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: calc(var(--p, 0) * 100%);
+  background: var(--otw-cream);
+}
+
+.otw__credit {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+  color: rgb(244 239 230 / 0.6);
+}
+
+.otw__credit a {
+  color: var(--otw-cream);
+}
+
+/* Grano de película y viñeta: la escena se ve como una foto de 1979. */
+.otw__grain {
+  position: absolute;
+  inset: -50%;
+  pointer-events: none;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.45 0 0 0 0 0.4 0 0 0 1.1 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: otw-grain 0.9s steps(6) infinite;
+}
+
+.otw__vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgb(12 6 4 / 0.55) 100%);
+}
+
+@keyframes otw-grain {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-6%, 4%); }
+  40% { transform: translate(5%, -7%); }
+  60% { transform: translate(-3%, 8%); }
+  80% { transform: translate(7%, 2%); }
+  100% { transform: translate(0, 0); }
+}
+
+.otw__budget {
+  margin: 10px 0 0;
+  font-family: ui-monospace, monospace;
+  font-size: 0.72rem;
+  color: rgb(244 239 230 / 0.7);
+}
+
+.otw__budget.is-over {
+  color: #ffb4a2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .otw__frame {
+    transition: none;
+  }
+
+  .otw__flash.is-on {
+    animation: none;
+  }
+
+  .otw__grain {
+    animation: none;
+  }
+}
+
+/* Selector de origen de la música y reproductor de Spotify. */
+.otw__source {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.otw__spotify iframe {
+  display: block;
+  border: 0;
+  border-radius: 12px;
+}
+
+.otw [hidden] {
+  display: none !important;
+}
+
+/* Dedicatoria al final del panel: frase de Michael y firma. */
+.otw__dedication {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--otw-line);
+}
+
+.otw__quote {
+  margin: 0;
+}
+
+.otw__quote p {
+  margin: 0;
+  font-family: 'Yellowtail', cursive;
+  font-size: 1.25rem;
+  line-height: 1.25;
+  color: var(--otw-cream);
+}
+
+.otw__quote cite {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.72rem;
+  font-style: normal;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(244 239 230 / 0.6);
+}
+
+.otw__quote-es,
+.otw__signature {
+  margin: 6px 0 0;
+  font-family: system-ui, sans-serif;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: rgb(244 239 230 / 0.72);
+}
+
+.otw__signature strong {
+  color: var(--otw-cream);
+}
+
+/* Botón destacado de la coreografía. */
+.otw button.otw__star {
+  border-color: var(--otw-cream);
+  font-weight: 600;
+}
+
+/* La foto hecha, como una polaroid, con su enlace de descarga. */
+.otw__shot {
+  margin: 0 0 12px;
+  padding: 8px 8px 6px;
+  background: var(--otw-cream);
+  border-radius: 4px;
+  transform: rotate(-1.5deg);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.4);
+}
+
+.otw__shot img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.otw__shot figcaption {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.otw__shot a {
+  color: #3a1d14;
+  font-weight: 600;
+}
+
+.otw__shot figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Firma de la foto: lleva a mi GitHub. */
+.otw__shot .otw__shot-by {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .otw__shot {
+    transform: none;
+  }
+}
+
+/* Botones de zoom: a la izquierda, a media altura (abajo está la navegación de la galería). */
+.otw__zoom {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  gap: 6px;
+  z-index: 4;
+}
+
+.otw__zoom button,
+.otw__pad button {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--otw-glass);
+  backdrop-filter: blur(6px);
+  font-size: 1.2rem;
+  line-height: 1;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Cruceta: solo en pantallas táctiles, abajo a la derecha por encima de la navegación. */
+.otw__pad {
+  position: absolute;
+  right: 14px;
+  bottom: 96px;
+  display: none;
+  grid-template-columns: repeat(3, 44px);
+  grid-template-rows: repeat(3, 44px);
+  gap: 4px;
+  z-index: 4;
+}
+
+.otw__pad-up {
+  grid-area: 1 / 2;
+}
+
+.otw__pad-left {
+  grid-area: 2 / 1;
+}
+
+.otw__pad-right {
+  grid-area: 2 / 3;
+}
+
+.otw__pad-down {
+  grid-area: 3 / 2;
+}
+
+@media (pointer: coarse) {
+  .otw__pad {
+    display: grid;
+  }
+}
+
+/* Submenú del tocadiscos: a la izquierda, a media altura (secundario). */
+.otw__deck {
+  position: absolute;
+  left: 76px;
+  top: 50%;
+  transform: translateY(-40%);
+  z-index: 7;
+  width: min(270px, calc(100vw - 92px));
+  max-height: 52dvh;
+  overflow-y: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--otw-line);
+  border-radius: 12px;
+  background: rgb(20 12 9 / 0.92);
+  color: var(--otw-cream, #f7e9cf);
+  font: 13px/1.3 system-ui, sans-serif;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.5);
+}
+
+.otw__deck-records button span {
+  opacity: 0.6;
+}
+
+/* Flecha que lleva al tocadiscos desde el cuadro de los Jackson 5. */
+.otw .otw__deck-arrow {
+  position: absolute;
+  left: 50%;
+  bottom: 120px;
+  transform: translateX(-50%);
+  z-index: 7;
+  min-height: 44px;
+  padding: 8px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: #d9a441;
+  color: #1b0f0a;
+  font: 600 1rem/1 'Oswald', sans-serif;
+  letter-spacing: 0.04em;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.45);
+  animation: otw-nudge 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes otw-nudge {
+  to {
+    transform: translateX(calc(-50% + 8px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .otw .otw__deck-arrow {
+    animation: none;
+  }
+}
+
+.otw__deck-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.otw__deck-head button {
+  min-width: 32px;
+  min-height: 32px;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.otw__deck ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.otw__deck li button {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 6px;
+  text-align: left;
+  border-radius: 6px;
+}
+
+.otw__deck li button span {
+  opacity: 0.6;
+  margin-right: 4px;
+}
+
+.otw__deck li button[aria-pressed='true'] {
+  background: #b5452a;
+  color: #fff;
+}
+
+.otw__deck p {
+  margin: 6px 0 0;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* Nombre del objeto bajo el puntero, pegado al cursor. */
+.otw__hint {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 30;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgb(20 12 9 / 0.88);
+  color: #f7e9cf;
+  font: 600 12px/1.2 Oswald, system-ui, sans-serif;
+  letter-spacing: 0.03em;
+  pointer-events: none;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.otw__hint.is-on {
+  opacity: 1;
+}
+
+@media (pointer: coarse) {
+  .otw__hint {
+    display: none;
+  }
+}
+
+/* Pantalla de entrada: vinilo girando con anillo de carga y botón para entrar. */
+.otw__intro {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  padding: 16px;
+  background: radial-gradient(circle at 50% 42%, #3a1d14 0%, #160c09 55%, #0b0605 100%);
+  color: #f7e9cf;
+  text-align: center;
+  transition: opacity 0.9s ease, visibility 0.9s;
+}
+
+.otw__intro.is-gone {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.otw__intro-deck {
+  position: relative;
+  width: min(62vw, 300px);
+  aspect-ratio: 1;
+}
+
+/* Anillo: se llena con --p según avanza la carga. */
+.otw__intro-ring {
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  background: conic-gradient(#d9a441 var(--p), rgb(255 255 255 / 0.08) 0);
+  mask: radial-gradient(circle, transparent 66%, #000 67%);
+  transition: background 0.6s ease;
+}
+
+.otw__intro-vinyl {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.12), transparent 45%),
+    repeating-radial-gradient(circle, #111 0 2px, #1c1c1f 2px 4px);
+  box-shadow: 0 18px 50px rgb(0 0 0 / 0.6);
+  display: grid;
+  place-items: center;
+  animation: otw-spin 1.8s linear infinite;
+}
+
+/* Disco de carga con la foto en todo el disco (un "picture disc"): solo aquí,
+   los vinilos del plató siguen con la etiqueta en el centro. */
+.otw__intro-label {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background-color: #b5452a;
+  background-size: cover;
+  background-position: center;
+  display: grid;
+  place-content: center;
+  line-height: 1.05;
+  text-shadow: 0 1px 4px #000, 0 0 12px rgb(0 0 0 / 0.8);
+}
+
+/* Surcos y brillo del vinilo por encima de la foto, y el agujero del eje. */
+.otw__intro-label::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #0c0a09 0 2.2%, rgb(247 233 207 / 0.5) 2.3% 2.9%, transparent 3%),
+    radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.16), transparent 45%),
+    repeating-radial-gradient(circle, rgb(0 0 0 / 0.22) 0 1px, transparent 1px 4px);
+  pointer-events: none;
+}
+
+.otw__intro-label > * {
+  position: relative;
+}
+
+.otw__intro-label span {
+  font: 0.72rem/1 'Yellowtail', cursive;
+}
+
+.otw__intro-label strong {
+  font: 600 0.62rem/1.2 'Oswald', sans-serif;
+  letter-spacing: 0.08em;
+}
+
+.otw__intro-label em {
+  font: 0.5rem/1 'Oswald', sans-serif;
+  font-style: normal;
+  opacity: 0.8;
+}
+
+.otw__intro-status {
+  margin: 0;
+  font: 500 1rem/1.3 'Oswald', sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.otw__intro-status span {
+  opacity: 0.7;
+  margin-left: 6px;
+}
+
+.otw .otw__intro-enter {
+  min-height: 48px;
+  padding: 10px 26px;
+  border-radius: 999px;
+  border: 0;
+  background: #d9a441;
+  color: #1b0f0a;
+  font: 600 1.05rem/1 'Oswald', sans-serif;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.3s ease;
+}
+
+.otw .otw__intro-enter:not(:disabled):hover {
+  transform: scale(1.05);
+}
+
+.otw .otw__intro-enter:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.otw__intro-tip {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+@keyframes otw-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .otw__intro-vinyl {
+    animation: none;
+  }
+
+  .otw__intro {
+    transition: none;
+  }
+}
+
+/* Reproductor del disco: arriba a la izquierda, siempre a la vista. */
+.otw__music {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 6;
+  width: min(22rem, calc(100vw - 32px));
+  /* Termina antes de los botones de zoom, que van a media altura. */
+  max-height: calc(50dvh - 70px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--otw-line);
+  border-radius: 14px;
+  background: var(--otw-glass);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.otw__music-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.otw__music.is-playing .otw__music-bar {
+  background: linear-gradient(90deg, rgb(181 69 42 / 0.35), transparent);
+}
+
+.otw__now {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  line-height: 1.15;
+}
+
+.otw__now-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(244 239 230 / 0.6);
+}
+
+.otw__now-title {
+  font-weight: 600;
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.otw .otw__play,
+.otw .otw__fold {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.otw .otw__play {
+  border: 0;
+  background: #d9a441;
+  color: #1b0f0a;
+}
+
+.otw__music-body {
+  overflow-y: auto;
+  padding: 0 14px 12px;
+  border-top: 1px solid var(--otw-line);
+}
+
+.otw__music-body .otw__source {
+  margin-top: 10px;
+}
+
+/* Ecualizador: se mueve solo cuando suena algo. */
+.otw__eq {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  width: 22px;
+  height: 22px;
+}
+
+.otw__eq i {
+  flex: 1;
+  height: 25%;
+  border-radius: 2px;
+  background: var(--otw-cream);
+  opacity: 0.55;
+}
+
+.otw__music.is-playing .otw__eq i {
+  opacity: 1;
+  animation: otw-eq 0.9s ease-in-out infinite alternate;
+}
+
+.otw__music.is-playing .otw__eq i:nth-child(2) {
+  animation-delay: -0.3s;
+}
+
+.otw__music.is-playing .otw__eq i:nth-child(3) {
+  animation-delay: -0.6s;
+}
+
+.otw__music.is-playing .otw__eq i:nth-child(4) {
+  animation-delay: -0.15s;
+}
+
+@keyframes otw-eq {
+  from {
+    height: 20%;
+  }
+  to {
+    height: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .otw__music.is-playing .otw__eq i {
+    animation: none;
+    height: 70%;
+  }
+}
+
+/* Botones para cambiar de disco en la lista del tocadiscos. */
+.otw__deck-records {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 8px;
+}
+
+.otw__deck-records button {
+  min-height: 30px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.otw__deck-records button[aria-pressed='true'] {
+  background: #d9a441;
+  color: #1b0f0a;
+}
+
+/* Fecha del disco al entrar: aparece, se queda un momento y se desvanece. */
+.otw__date {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  z-index: 35;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  transform: translate(-50%, -50%);
+  color: #f7e9cf;
+  text-align: center;
+  pointer-events: none;
+  padding: 18px 34px;
+  border-radius: 16px;
+  background: rgb(14 8 6 / 0.72);
+  backdrop-filter: blur(6px);
+  text-shadow: 0 4px 24px rgb(0 0 0 / 0.75);
+  animation: otw-date 3.6s ease forwards;
+}
+
+.otw__date span {
+  font: 400 0.9rem/1 'Oswald', sans-serif;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.otw__date strong {
+  white-space: nowrap;
+  font: 600 clamp(1.6rem, 5.5vw, 3.8rem)/1 'Oswald', sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@keyframes otw-date {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -40%) scale(0.96);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -55%) scale(1.02);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .otw__date {
+    animation: none;
+  }
+}
+
+/* Botones de idioma (ES/EN). */
+.otw__lang {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 10px;
+}
+
+.otw .otw__lang button {
+  min-height: 30px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+}
+
+.otw .otw__lang button[aria-pressed='true'] {
+  background: #d9a441;
+  color: #1b0f0a;
+  border-color: transparent;
+}
+
+
+/* Foto de Michael con Muscles: se abre al pulsar la boa y se cierra con la ×,
+   pulsando fuera o con Escape. */
+.otw__photo {
+  position: absolute;
+  inset: 0;
+  z-index: 38;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(8 5 4 / 0.72);
+}
+
+.otw__photo figure {
+  position: relative;
+  margin: 0;
+  padding: 10px 10px 12px;
+  border: 1px solid var(--otw-line);
+  border-radius: 10px;
+  background: var(--otw-glass);
+  box-shadow: 0 18px 60px rgb(0 0 0 / 0.6);
+}
+
+.otw__photo img {
+  display: block;
+  max-width: min(495px, calc(100vw - 52px));
+  max-height: calc(100dvh - 150px);
+  min-width: 160px;
+  min-height: 120px;
+  border-radius: 6px;
+}
+
+.otw__photo figcaption {
+  display: grid;
+  gap: 2px;
+  margin-top: 8px;
+  max-width: min(495px, calc(100vw - 52px));
+  font-family: system-ui, sans-serif;
+  font-size: 0.85rem;
+}
+
+.otw__photo figcaption strong {
+  font-family: 'Yellowtail', cursive;
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--otw-cream);
+}
+
+.otw__photo button {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--otw-line);
+  border-radius: 999px;
+  background: var(--otw-brick);
+  color: var(--otw-ink);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.otw__photo button:focus-visible {
+  outline: 2px solid var(--otw-cream);
+  outline-offset: 2px;
+}
+
+.otw__photo figcaption small {
+  margin-top: 4px;
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+/* La ficha entera cabe siempre en la pantalla: la foto se queda en algo más de
+   media altura y, si el texto es largo, se desplaza dentro de la ficha. */
+.otw__photo figure {
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  overflow-x: visible;
+}
+
+.otw__photo img {
+  max-height: 56dvh;
+  margin: 0 auto;
+}
+
+.otw__photo button {
+  top: 6px;
+  right: 6px;
+}
+
+/* Recorrido de entrada, como una secuencia de cine: franjas negras arriba y
+   abajo, todo lo demás escondido, el rótulo de cada parada y «Saltar». */
+.otw__cine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 33;
+  height: 11dvh;
+  background: #050302;
+  pointer-events: none;
+  transition: transform 0.9s ease;
+}
+
+.otw__cine--top {
+  top: 0;
+  transform: translateY(-101%);
+}
+
+.otw__cine--bottom {
+  bottom: 0;
+  transform: translateY(101%);
+}
+
+.otw--tour .otw__cine {
+  transform: none;
+}
+
+.otw--tour .otw__music,
+.otw--tour .otw__panel,
+.otw--tour .otw__zoom,
+.otw--tour .otw__pad,
+.otw--tour .otw__hint,
+.otw--tour .otw__deck,
+.otw--tour .otw__deck-arrow {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.otw__music,
+.otw__panel,
+.otw__zoom {
+  transition: opacity 0.8s ease;
+}
+
+.otw__tour-caption {
+  position: absolute;
+  left: 50%;
+  bottom: calc(11dvh + 22px);
+  z-index: 34;
+  margin: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font: 400 clamp(1.5rem, 4.2vw, 2.9rem) / 1.1 'Yellowtail', cursive;
+  color: var(--otw-cream);
+  text-shadow: 0 2px 18px rgb(0 0 0 / 0.9), 0 0 3px rgb(0 0 0 / 0.9);
+  pointer-events: none;
+  animation: otw-caption 2.3s ease both;
+}
+
+@keyframes otw-caption {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  82% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.otw .otw__tour-skip {
+  position: absolute;
+  right: 18px;
+  bottom: calc(5.5dvh - 18px);
+  z-index: 36;
+  min-height: 36px;
+  padding: 4px 16px;
+  border: 1px solid var(--otw-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--otw-ink);
+  font: 500 0.85rem/1 'Oswald', sans-serif;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.otw .otw__spotify-album {
+  margin: 8px 0 2px;
+  min-height: 32px;
+  padding: 4px 14px;
+  border: 1px solid var(--otw-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--otw-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   Móvil, tableta y pantallas táctiles.
+   La galería pone encima su navegación (fija, abajo): --otw-nav es el alto
+   que ocupa, y nada de la ruta se coloca en esa franja.
+   ========================================================================== */
+
+.otw {
+  --otw-nav: 96px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* En pantallas estrechas la navegación de la galería se apila en tres filas. */
+@media (max-width: 640px) {
+  .otw {
+    --otw-nav: 168px;
+  }
+}
+
+/* Ni rebote ni «tirar para recargar» mientras se gira la cámara con el dedo. */
+html.route-off-the-wall,
+html.route-off-the-wall body {
+  overscroll-behavior: none;
+}
+
+/* Sin zoom de doble toque en los botones. */
+.otw button {
+  touch-action: manipulation;
+}
+
+.otw__help--touch {
+  display: none;
+}
+
+/* Con el dedo: botones a la medida de una yema (44 px) y la ayuda táctil. */
+@media (hover: none) and (pointer: coarse) {
+  .otw__help--keys {
+    display: none;
+  }
+
+  .otw__help--touch {
+    display: block;
+  }
+
+  .otw button {
+    min-height: 44px;
+  }
+
+  .otw .otw__toggle,
+  .otw .otw__spotify-album,
+  .otw__deck li button,
+  .otw button.otw__track {
+    min-height: 40px;
+  }
+
+  .otw .otw__lang button,
+  .otw__deck-records button {
+    min-height: 36px;
+    padding: 2px 12px;
+  }
+
+  .otw .otw__tour-skip {
+    min-height: 44px;
+    padding: 4px 20px;
+  }
+
+  .otw__deck-head .otw__deck-close {
+    min-width: 44px;
+  }
+
+  /* El desplazamiento de un panel no arrastra la página ni la cámara. */
+  .otw__panel,
+  .otw__music-body,
+  .otw__deck,
+  .otw__photo figure {
+    overscroll-behavior: contain;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Móvil de pie: dos barras finas arriba (título y música), el plató en medio
+   y, abajo, el zoom a la izquierda y la cruceta a la derecha, justo encima de
+   la navegación de la galería. Los paneles se despliegan hacia abajo desde su
+   barra, de uno en uno, sin llegar a esa franja.
+   -------------------------------------------------------------------------- */
+@media (max-width: 720px) and (min-height: 521px) {
+  .otw {
+    --otw-edge: 8px;
+    --otw-bar: 54px;
+    /* Donde acaban las dos barras de arriba. */
+    --otw-under: calc(var(--otw-edge) + var(--otw-bar) + 2px + 6px + 54px + 6px);
+  }
+
+  .otw__panel {
+    top: var(--otw-edge);
+    left: var(--otw-edge);
+    right: var(--otw-edge);
+    width: auto;
+    max-height: calc(100dvh - var(--otw-edge) - var(--otw-nav) - 8px);
+    padding: 0 12px;
+  }
+
+  .otw__panel.is-closed {
+    width: auto;
+    min-width: 0;
+  }
+
+  .otw__panel:not(.is-closed) {
+    z-index: 9;
+    background: rgb(20 13 10 / 0.94);
+  }
+
+  /* Título, idioma y botón en una sola fila. */
+  .otw__head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 8px;
+    min-height: var(--otw-bar);
+  }
+
+  .otw__panel:not(.is-closed) .otw__head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    margin: 0 -12px;
+    padding: 0 12px;
+    background: #1b120f;
+    border-bottom: 1px solid var(--otw-line);
+  }
+
+  .otw__artist {
+    grid-area: 1 / 1;
+    align-self: end;
+    font-size: 1.15rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .otw__title {
+    grid-area: 2 / 1;
+    align-self: start;
+    margin: 0;
+    font-size: clamp(0.78rem, 3.6vw, 0.95rem);
+    letter-spacing: 0.12em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .otw__meta {
+    display: none;
+  }
+
+  .otw__lang {
+    grid-area: 1 / 2 / span 2;
+    margin: 0;
+  }
+
+  .otw .otw__toggle {
+    position: static;
+    grid-area: 1 / 3 / span 2;
+  }
+
+  .otw__body {
+    padding: 12px 0;
+  }
+
+  /* La música, en su barra, debajo de la del título. */
+  .otw__music {
+    top: calc(var(--otw-edge) + var(--otw-bar) + 2px + 6px);
+    left: var(--otw-edge);
+    right: var(--otw-edge);
+    width: auto;
+    max-height: calc(100dvh - var(--otw-edge) - var(--otw-bar) - 8px - var(--otw-nav) - 8px);
+  }
+
+  .otw__music:not(.is-folded) {
+    z-index: 9;
+    background: rgb(20 13 10 / 0.94);
+  }
+
+  .otw__music-bar {
+    padding: 6px 10px;
+  }
+
+  .otw .otw__play,
+  .otw .otw__fold {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+
+  .otw__zoom {
+    top: auto;
+    left: 10px;
+    bottom: calc(var(--otw-nav) + 6px);
+    transform: none;
+  }
+
+  .otw__pad {
+    right: 10px;
+    bottom: calc(var(--otw-nav) + 6px);
+    grid-template-columns: repeat(3, 42px);
+    grid-template-rows: repeat(3, 42px);
+    gap: 2px;
+  }
+
+  .otw__pad button {
+    width: 42px;
+    height: 42px;
+    min-height: 42px;
+  }
+
+  .otw__deck {
+    top: var(--otw-under);
+    left: var(--otw-edge);
+    right: var(--otw-edge);
+    z-index: 9;
+    width: auto;
+    max-height: calc(100dvh - var(--otw-under) - var(--otw-nav) - 8px);
+    transform: none;
+  }
+
+  /* Una sola barra de desplazamiento: la del menú entero. */
+  .otw__deck ol {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .otw .otw__deck-arrow {
+    top: calc(var(--otw-under) + 6px);
+    bottom: auto;
+  }
+
+  /* Recorrido de entrada: el rótulo y «Saltar» van arriba (abajo los taparía
+     la navegación de la galería) y el rótulo puede partirse en dos líneas. */
+  .otw__tour-caption {
+    top: calc(11dvh + 14px);
+    bottom: auto;
+    width: calc(100vw - 32px);
+    white-space: normal;
+    text-align: center;
+  }
+
+  .otw .otw__tour-skip {
+    top: max(8px, calc(5.5dvh - 22px));
+    right: 12px;
+    bottom: auto;
+  }
+
+  .otw__date {
+    padding: 14px 20px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Móvil tumbado (poca altura): la música arriba a la izquierda y el título
+   arriba a la derecha, los dos en una barra; zoom y cruceta, en los lados.
+   -------------------------------------------------------------------------- */
+@media (max-height: 520px) {
+  .otw {
+    --otw-edge: 8px;
+  }
+
+  .otw__panel {
+    top: var(--otw-edge);
+    right: var(--otw-edge);
+    left: auto;
+    width: min(24rem, 58vw);
+    max-height: calc(100dvh - var(--otw-edge) - var(--otw-nav) - 4px);
+    padding: 0 12px;
+  }
+
+  .otw__panel.is-closed {
+    width: auto;
+    min-width: 0;
+  }
+
+  .otw__panel:not(.is-closed) {
+    z-index: 9;
+    background: rgb(20 13 10 / 0.94);
+  }
+
+  .otw__head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    column-gap: 8px;
+    min-height: 48px;
+  }
+
+  .otw__panel:not(.is-closed) .otw__head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    margin: 0 -12px;
+    padding: 0 12px;
+    background: #1b120f;
+    border-bottom: 1px solid var(--otw-line);
+  }
+
+  .otw__artist,
+  .otw__meta {
+    display: none;
+  }
+
+  .otw__title {
+    margin: 0;
+    font-size: 0.95rem;
+    letter-spacing: 0.12em;
+    white-space: nowrap;
+  }
+
+  .otw__lang {
+    margin: 0;
+  }
+
+  .otw .otw__toggle {
+    position: static;
+  }
+
+  .otw__body {
+    padding: 10px 0;
+  }
+
+  .otw__music {
+    top: var(--otw-edge);
+    left: var(--otw-edge);
+    width: min(17rem, calc(100vw - 22rem));
+    max-height: calc(100dvh - var(--otw-edge) - var(--otw-nav) - 4px);
+  }
+
+  /* Abierto se ensancha: dentro va el reproductor de Spotify. */
+  .otw__music:not(.is-folded) {
+    z-index: 9;
+    width: min(22rem, 56vw);
+    background: rgb(20 13 10 / 0.94);
+  }
+
+  .otw__music-bar {
+    padding: 4px 8px;
+    gap: 8px;
+  }
+
+  .otw__eq {
+    display: none;
+  }
+
+  .otw__now-title {
+    font-size: 0.9rem;
+  }
+
+  .otw .otw__play,
+  .otw .otw__fold {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+
+  .otw__zoom {
+    top: auto;
+    left: 10px;
+    bottom: calc(var(--otw-nav) + 4px);
+    transform: none;
+  }
+
+  .otw__pad {
+    right: 10px;
+    bottom: calc(var(--otw-nav) + 4px);
+    grid-template-columns: repeat(3, 40px);
+    grid-template-rows: repeat(3, 40px);
+    gap: 2px;
+  }
+
+  .otw__pad button {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+
+  .otw__deck {
+    top: 64px;
+    left: var(--otw-edge);
+    z-index: 9;
+    width: min(20rem, 48vw);
+    max-height: calc(100dvh - 64px - var(--otw-nav) - 4px);
+    transform: none;
+  }
+
+  .otw__deck ol {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .otw .otw__deck-arrow {
+    top: 64px;
+    bottom: auto;
+  }
+
+  .otw__tour-caption {
+    bottom: calc(var(--otw-nav) + 6px);
+  }
+
+  .otw .otw__tour-skip {
+    top: max(6px, calc(5.5dvh - 22px));
+    bottom: auto;
+  }
+
+  /* Pantalla de entrada y fichas: todo cabe sin desplazarse. */
+  .otw__intro {
+    gap: 8px;
+    padding: 8px 16px;
+  }
+
+  .otw__intro-deck {
+    width: min(40dvh, 300px);
+  }
+
+  .otw__photo figure {
+    max-height: calc(100dvh - 24px);
+  }
+
+  .otw__photo img {
+    max-height: 46dvh;
+  }
+
+  .otw__date {
+    padding: 10px 24px;
+  }
+}
+
+/* Tumbado y además estrecho: la navegación de la galería ocupa media pantalla
+   y no queda sitio para la cruceta ni el zoom (se camina tocando el suelo y se
+   acerca con el pellizco). */
+@media (max-height: 520px) and (max-width: 640px) {
+  .otw__pad,
+  .otw__zoom {
+    display: none;
+  }
+}
