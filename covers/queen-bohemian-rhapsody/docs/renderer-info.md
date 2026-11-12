@@ -3,9 +3,9 @@
 Album: Queen — Bohemian Rhapsody (homenaje 3D, arte propio).
 Scene (task1): portada procedural (CanvasTexture) → skybox con shader propio + estadio, escenario,
 Freddie-maniquí y micro **procedurales** (placeholders, `USE_GLB = false`) + multitud de 5000 fans en
-1 `InstancedMesh`. 3 luces (ambiente, direccional, spot), shadows off, DPR cap [1, 1.5], sin post-proceso.
+1 `InstancedMesh`. task2: + 1 667 luces de móvil en 1 `Points`, 4 luces (ambiente, direccional, 2 spots), shadows off, DPR cap [1, 1.5], sin post-proceso.
 Unit cap, any scene: desktop ≤ 200 calls, mobile ≤ 80. Objetivo propio: ≤ 40 calls, ≤ 600k triangles.
-Accepted ceiling for this tree: **16 calls · 497 072 triangles · 10 geometries · 2 textures** (pico, durante el fundido) — igual que `src/budget.js` (`CEILING`).
+Accepted ceiling for this tree: **16 calls · 497 072 triangles · 11 geometries · 2 textures** (pico; geometries desde task2) — igual que `src/budget.js` (`CEILING`).
 
 Pins: three@0.185.1, @react-three/fiber@9.8.2, @react-three/drei@10.7.9, react@19.3.1 (this repo's package.json).
 
@@ -29,6 +29,25 @@ máquina; **no** mide rendimiento (SwiftShader es CPU). Pendiente: fps en un por
 La diferencia entre plano ancho y final es el frustum
 culling (Freddie/escenario fuera de cuadro al mirar al cielo).
 
+## Medido (task2, 2026-11-12)
+
+Mismo método y máquina (HeadlessChrome 157 + SwiftShader). Cambios de task2: shader del cielo revisado
+(mismo coste: 1 esfera), bote de la multitud en el vertex shader (0 calls, 0 triángulos), luces de móvil
+(`Points`, 1 667 puntos, **1 call**, 1 geometría; no suman triángulos) y un segundo foco violeta (0 calls).
+
+| Momento | Machine, browser, date | Shadows | calls | triangles | geometries | textures |
+| --- | --- | --- | --- | --- | --- | --- |
+| idle | HeadlessChrome 157 + SwiftShader, 2026-11-12 | off | 8 | 588 | 3 | 2 |
+| portada (t ≈ 1 s) | ídem | off | 10 | 592 | 4 | 2 |
+| **pico: fundido (t ≈ 1,3–2,3 s)** | ídem (panel cada 100 ms) | off | **16** | **497 072** | **11** | 2 |
+| plano ancho (t = 4 s, scrub dev) | ídem (panel) | off | 6 | 496 480 | 11 | 2 |
+| primer plano, móviles encendiéndose (t = 11 s) | ídem (panel) | off | 7 | 496 480 | 11 | 2 |
+| plano final (intro + 1 s) | ídem (`console.table`) | off | 5 | 494 700 | 11 | 2 |
+
+Los móviles solo se dibujan cuando hay alguno encendido (`material.visible`, uNight > 0, tod ≳ 0,3): en el pico
+del fundido (tod = 0) no se dibujan, por eso calls y triángulos del techo no cambian. `geometries` sube a 11
+en cuanto el mundo se monta. `CEILING` actualizado a 11 geometrías en `src/budget.js`.
+
 ## Calculado (no medido) — para contrastar
 
 Triángulos por geometría, contados en Node con las mismas funciones de `src/placeholders.js`
@@ -42,6 +61,7 @@ Triángulos por geometría, contados en Node con las mismas funciones de `src/pl
 | Mic | 172 | 1 |
 | Crowd: Fan_LOD0 provisional 96 × 5000 instancias | 480 000 | 1 |
 | SunsetSky (esfera 48 × 32) | 2 976 | 1 |
+| Phones (task2): `Points`, 1 de cada 3 fans | 0 (1 667 puntos) | 1 (solo de noche) |
 | CoverPortal: funda (caja, 6 grupos de material) + vinilo + etiqueta + telón | 12 + 384 + 192 + 2 = 590 | 6 + 1 + 1 + 1 = 9 (solo hasta t = 2,3 s) |
 | **Total con todo visible** (fundido t = 1,3–2,3 s) | **≈ 497 070** | **15** |
 

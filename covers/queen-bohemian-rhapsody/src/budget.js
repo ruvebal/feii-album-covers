@@ -14,5 +14,7 @@
 // Medido el 2026-11-11 (HeadlessChrome 157, ANGLE/SwiftShader, 1440×900, DPR 1): pico de la intro,
 // durante el fundido portada → mundo (t ≈ 1,3–2,3 s), cuando funda, telón y mundo se dibujan a la
 // vez. Detalle en docs/renderer-info.md.
+// task2 (2026-11-12, misma máquina): geometries 10 → 11 por los móviles (Points). Calls y triángulos
+// del pico no cambian: los móviles solo se dibujan de noche, cuando la funda ya no está.
 /** @type {import('../../../src/lib/types.js').Ceiling | null} */
-export const CEILING = { calls: 16, triangles: 497072, geometries: 10, textures: 2 };
+export const CEILING = { calls: 16, triangles: 497072, geometries: 11, textures: 2 };

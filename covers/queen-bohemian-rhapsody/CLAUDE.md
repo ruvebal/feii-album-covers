@@ -20,10 +20,12 @@ Si algo de aquí contradice al repo, gana el repo.
 | `Scene.jsx` | Árbol R3F: portada → mundo (cielo, luces, estadio, Freddie, multitud); `USE_GLB` elige placeholders o GLB |
 | `keys.js` | Match cut calculado (`MATCH`, `SLEEVE_CENTER`, `SLEEVE_SIZE`, `IDLE_CAMERA`), zoom (`FLIGHT_FROM`, `ZOOM_FOV`), keyframes del vuelo (`KEYS`), `PORTAL_FADE`, `WORLD_FROM` |
 | `CameraRig.jsx` | Idle: `OrbitControls` sobre la funda → acercamiento a `MATCH` → zoom de FOV (match cut) → vuelo Catmull-Rom → `CameraControls`; teclas dev |
-| `SunsetSky.jsx` | Skybox con shader propio (`uTime`, `uTod`, `uSunDir`) |
+| `SunsetSky.jsx` | Skybox con shader propio (`uTime`, `uTod`, `uSunDir`): degradado, sol, nubes fbm, star trails. Nota: `docs/shader-note.md` |
+| `sky.js` | `SKY_PERIOD` (envuelve uTime), `BEAT_HZ` (72 bpm), `sunDirection(tod)` compartida por cielo y luces |
+| `SkyLights.jsx` | Sol direccional, ambiente y 2 focos violetas ligados a `tod` |
 | `CoverPortal.jsx` | Disco en su funda (portada delante/detrás + vinilo asomando): balanceo en idle, clic = entrar, se desvanece |
 | `sleeveArt.js` | Imagen de la funda: procedural propia o `public/sleeve.png` (`SLEEVE_URL`) |
-| `Crowd.jsx` | Multitud = 1 `InstancedMesh`, posiciones con PRNG con semilla |
+| `Crowd.jsx` | Multitud = 1 `InstancedMesh` (bote en vertex shader, `aPhase`) + móviles en 1 `Points`; posiciones con PRNG con semilla |
 | `placeholders.js` | Geometría procedural con los nombres/medidas del futuro GLB |
 | `stadiumGlb.js` | Camino GLTF + KTX2 + meshopt (inactivo hasta task3) |
 | `RendererInfo.jsx` | `console.table` de renderer.info en portada / plano ancho / plano final |
