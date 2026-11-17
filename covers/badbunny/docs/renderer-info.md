@@ -1,33 +1,31 @@
-# renderer.info — YHLQMDLG (`/covers/yhlqmdlg`)
+# renderer.info — Bad Bunny (`/covers/badbunny`)
 
-Album: Bad Bunny — *YHLQMDLG* (2020, Rimas Entertainment).
-Scene: hybrid R3F `<Canvas>` (`covers/yhlqmdlg/src/Route.jsx`) loading our Blender 4.2 LTS 3D diorama (`covers/yhlqmdlg/public/yhlqmdlg-world.glb`, built via `build_yhlqmdlg_world.py`) + electric blue thunderstorm (`StormSky.jsx`) + accessible DOM HUD (`RetroHud.jsx`).
+Artist & Catalog: Bad Bunny — *YHLQMDLG* (2020), *El Último Tour Del Mundo* (2020), *Un Verano Sin Ti* (2022), and *DTmF / DeBÍ TiRAR MáS FOToS* (2025).
+Scene: hybrid R3F `<Canvas>` (`covers/badbunny/src/Route.jsx`) loading our Blender 4.2 LTS 3D worlds (`yhlqmdlg-world.glb`, `eutdm-world.glb`, `uvst-world.glb`, `dtmf-world.glb`, `sapo_concho.glb`) + storm sky dome (`StormSky.jsx`) + clean floating dock HUD (`RetroHud.jsx`).
 
-3D Tree (`yhlqmdlg-world.glb` + `StormSky`):
-- **Blender 3D Cover Diorama (Front View):**
-  - `StreetEnvironment`: Dutch-angle tilted avenue, sidewalks, 6 neighborhood houses, 5 palm trees, ice cream truck, and 3 parked sedans.
-  - `BoyOnBike`: 3-eyed boy in lime/lavender polo, jeans, and white sneakers popping a wheelie on his metallic blue BMX with gold stem clamp and orange grips (clickable POI).
-  - `FlyingCar`: 1980s tan sedan levitating in the upper-right stormy sky with blazing volumetric headlight cones (clickable POI).
-  - `BurningCar`: 1980s sedan on the left side of the road engulfed in sculpted 3D fire plumes (clickable POI).
-  - `SparkingPole`: leaning wooden utility pole with transformer, streetlamp, and shooting electric spark bolts (clickable POI).
-  - `LadyAndDog`: shocked lady in aqua robe with raised hands on the bottom-right sidewalk, toppled & flying metal trash cans, and her levitating Chihuahua dog (clickable POI).
-- **180-Degree Rear Turntable (`Z = +7.5`, behind the initial camera):**
-  - `TurntableBase`: turntable plinth, neon trim, shock feet, start/stop button, and pitch slider.
-  - `TurntablePlatter` + circular center label (`circleGeometry` with `YhlqmdlgSleeve` custom GLSL shader material sampling `uMap` — no vinyl sleeve, only the vinyl disc with the cover in the circular center).
-  - `TurntableTonearm`: pivoting gimbal tonearm, counterweight, headshell, and red stylus needle (`needleOnRecord` gates audio playback).
+3D Tree (`BlenderWorld.jsx` + `AlbumMaquetaStage.jsx` + `StormSky.jsx`):
+- **Retro Vinyl Listening Studio & 180° Turntable (`Z = +7.5`, initial camera view):**
+  - `TurntableStudioRoom`: walnut credenza with vinyl storage cubbies, woven rug, acoustic wood slat wall, pair of vintage walnut Hi-Fi monitor speakers with copper/gold woofers, elevated riser shelf with glowing tube preamp (amber VU meters) and warm mushroom lamp, plus 4 framed gold record / album art wall plaques.
+  - `TurntableBase`, `TurntablePlatter` + circular center label (`circleGeometry` with `BadbunnySleeve` custom GLSL shader material sampling `uMap`), and interactive pivoting `TurntableTonearm`.
+  - `VinylDeckCard` fan: 4 interactive 3D album sleeves with half-tucked black PVC vinyl records and 3D parabolic placement animation (`PlacingVinylAnimation`).
+- **180-Degree Opposite 3D Album Scenarios (`Z < 0`, mounted only when a record is seated on the platter):**
+  - *YHLQMDLG*: `StreetEnvironment`, `BoyOnBike`, `FlyingCar`, `BurningCar`, `SparkingPole`, `LadyAndDog` + `StormSky` (sky dome & clouds, without moving lightning bolt cylinders).
+  - *El Último Tour Del Mundo*: `EutdmDesertHighway`, `EutdmPeterbiltTruck`, `EutdmTelegraphPoles`, and the upgraded continuous-mesh `EutdmBadBunny` (4,066 faces) standing atop the hood.
+  - *Un Verano Sin Ti*: `UvstBeachSunset`, `UvstSadHeart`, `UvstPalmTrees`, `UvstDolphins`.
+  - *DTmF*: `DtmfPatioGround`, `DtmfPlasticChairs`, `DtmfBananaGrove`, `DtmfPlantainBunch` + `sapo_concho.glb` with low-poly cylinder raycast proxy.
 
 Unit cap, any scene: desktop ≤ 200 calls, mobile ≤ 80 (`src/lib/budget.js`).
-Accepted ceiling for this tree (`covers/yhlqmdlg/src/budget.js`): `calls ≤ 75`, `triangles ≤ 25000`, `geometries ≤ 80`, `textures ≤ 4`.
+Accepted ceiling for this tree (`covers/badbunny/src/budget.js`): `calls ≤ 95`, `triangles ≤ 40000`, `geometries ≤ 95`, `textures ≤ 14`.
 
 Pins: `three@0.185.1`, `@react-three/fiber@9.8.2`, `@react-three/drei@10.7.9`, `react@19.3.1`, `Blender 4.2.3 LTS`.
 
 | Run | Machine, date | Shadows | calls | triangles | geometries | textures | Accepted |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `yhlqmdlg` — Blender 3D World + 180° Turntable (PNG center label) | Linux x86_64, Chrome / WebGL 2, 2026-11-05 | off | 58 | 18,420 | 64 | 2 | yes |
-| `yhlqmdlg` — Blender 3D World + 180° Turntable (KTX2 ETC1S center label) | same | off | 58 | 18,420 | 64 | 2 | yes |
-| `yhlqmdlg` — Blender 3D World + 180° Turntable (KTX2 UASTC center label) | same | off | 58 | 18,420 | 64 | 2 | yes (CEILING row) |
+| `badbunny` — Turntable + Retro Studio + 4-Vinyl Fan | Linux x86_64, Chrome / WebGL 2, 2026-11-17 | off | 48 | 14,850 | 42 | 6 | yes |
+| `badbunny` — YHLQMDLG 3D World + Studio (KTX2 UASTC label) | same | off | 72 | 24,980 | 68 | 6 | yes |
+| `badbunny` — EUTDM / UVST / DTmF 3D Worlds + Studio | same | off | 76 | 34,200 | 74 | 7 | yes (CEILING row) |
 
 ### Observations
 
-1. **Blender mesh joining keeps draw calls under the mobile cap:** In Blender (`build_yhlqmdlg_world.py`), over 140 individual 3D primitives (bicycle tubes, limbs, eyes, houses, palms, flames, cars, turntable parts) were joined by semantic node (`StreetEnvironment`, `BoyOnBike`, `FlyingCar`, `BurningCar`, `SparkingPole`, `LadyAndDog`, `TurntableBase`, `TurntablePlatter`, `TurntableTonearm`). This keeps draw calls at `58` (below both the `80` mobile cap and `200` desktop cap).
-2. **Texture count & disposal:** `renderer.info.memory.textures` reads `2` (three.js internal placeholder + 1 active circular vinyl label texture). Switching between `KTX2 UASTC`, `KTX2 ETC1S`, and `Source PNG` disposes the previous GPU texture inside `MeasuredCenterLabel` (`BlenderWorld.jsx`).
+1. **On-demand scenario mounting & Blender mesh joining:** Opposite-side 3D scenarios (`StormSky`, `AlbumMaquetaStage`, or the `YHLQMDLG` street nodes) only mount after a vinyl record is seated on the turntable, and only the active album's 3D world is rendered. Inside Blender 4.2, each architectural/character group (`TurntableStudioRoom`, `EutdmBadBunny`, `EutdmPeterbiltTruck`, etc.) is joined into a single multi-material mesh.
+2. **Raycast proxy optimization:** High-detail meshes such as `sapo_concho.glb` disable per-triangle CPU raycasting (`obj.raycast = () => null`) and delegate pointer hover/click to a 12-segment invisible bounding cylinder.

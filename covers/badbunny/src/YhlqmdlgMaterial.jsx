@@ -1,17 +1,15 @@
-// covers/yhlqmdlg/src/YhlqmdlgMaterial.jsx — Custom GLSL ShaderMaterial for YHLQMDLG (Covenant Bar 2).
+// covers/badbunny/src/YhlqmdlgMaterial.jsx — Custom GLSL ShaderMaterial for Bad Bunny (`/covers/badbunny`).
 //
-// Registered under the slug-unique R3F catalogue key `YhlqmdlgSleeve` (`<yhlqmdlgSleeve />`)
+// Registered under the slug-unique R3F catalogue key `BadbunnySleeve` (`<badbunnySleeve />`)
 // so it never collides with `_studio` or any other team's cover (Route contract 3).
 //
-// Effect overview (explained in 8-12 lines in docs/shader-note.md):
-//   - Coordinate space: mesh UV (`vUv`). The effect stays anchored to the printed album sleeve
-//     even as the camera orbits or transitions between Studio and Night Street views.
+// Effect overview (documented in docs/shader-note.md):
+//   - Coordinate space: mesh UV (`vUv`).
 //   - CRT / VHS Night Scanlines & Chromatic Shift: a horizontal wave along `vUv.y` driven by
 //     wrapped `uTime` and sub-bass energy (`uBass`) offsets the red and blue channels (`uMap`)
-//     around the cursor (`uPointer`) and the child's third eye (`vec2(0.50, 0.63)`).
-//   - Third-Eye Psychic Aura: a radial mask in UV space (`smoothstep`) around the forehead's
-//     third eye and the pointer mixes the track's neon signature color (`uTint`) when
-//     Perreo / Third-Eye mode (`uThirdEye`) or bass energy is active.
+//     around the cursor (`uPointer`) and `vec2(0.50, 0.63)`.
+//   - Psychic Aura: a radial mask in UV space (`smoothstep`) around `vec2(0.50, 0.63)` and the
+//     pointer mixes the track's signature color (`uTint`) with bass reactivity (`uBass`).
 //   - Ends with `#include <colorspace_fragment>` so sRGB textures render accurately.
 
 import { useRef } from 'react';
@@ -21,7 +19,7 @@ import { Color, Vector2 } from 'three';
 
 const TIME_WRAP = 62.8318; // 20 * PI so mediump float never loses precision
 
-const YhlqmdlgSleeveShader = shaderMaterial(
+const BadbunnySleeveShader = shaderMaterial(
   {
     uMap: null,
     uTime: 0,
@@ -52,7 +50,7 @@ const YhlqmdlgSleeveShader = shaderMaterial(
       float distEye = distance(vUv, eyeCenter);
       float distPtr = distance(vUv, uPointer);
 
-      // Radial psychic field around the third eye and interactive pointer
+      // Radial aura field around the center label and interactive pointer
       float eyeMask = 1.0 - smoothstep(0.02, 0.34 + uBass * 0.14, distEye);
       float ptrMask = 1.0 - smoothstep(0.0, 0.26, distPtr);
       float field = clamp(eyeMask * 0.85 + ptrMask * 0.55, 0.0, 1.0);
@@ -67,7 +65,7 @@ const YhlqmdlgSleeveShader = shaderMaterial(
       float b = texture2D(uMap, uvBase - vec2(shift, 0.0)).b;
       vec3 picture = vec3(r, g, b);
 
-      // Subtle CRT scanlines + diagonal neon sweep in UV space
+      // Subtle CRT scanlines + radial pulse ring in UV space
       float scanline = 0.94 + 0.06 * sin(vUv.y * 240.0 - uTime * 6.0);
       float pulseRing = (1.0 - smoothstep(0.0, 0.045, abs(distEye - fract(uTime * 0.35) * 0.48))) * uThirdEye;
 
@@ -86,9 +84,9 @@ const YhlqmdlgSleeveShader = shaderMaterial(
 );
 
 // Route contract 3: slug-unique key in the global R3F catalogue
-extend({ YhlqmdlgSleeve: YhlqmdlgSleeveShader });
+extend({ BadbunnySleeve: BadbunnySleeveShader });
 
-export default function YhlqmdlgMaterial({
+export default function BadBunnyMaterial({
   map,
   thirdEyeActive,
   pointerUvRef,
@@ -124,5 +122,5 @@ export default function YhlqmdlgMaterial({
     }
   });
 
-  return <yhlqmdlgSleeve ref={matRef} uMap={map} />;
+  return <badbunnySleeve ref={matRef} uMap={map} />;
 }

@@ -1,45 +1,49 @@
-// covers/yhlqmdlg/src/Route.jsx — Student-authored endpoint for /covers/yhlqmdlg (D26).
+// covers/badbunny/src/Route.jsx — Student-authored endpoint for /covers/badbunny (D26).
 //
-// Bad Bunny — YHLQMDLG (2020)
-// Complete 3D diorama modeled in Blender (`yhlqmdlg-world.glb`):
-//   - Starts with a wide perspective INSIDE the album cover street surrounded by the electric blue
-//     thunderstorm (`StormSky.jsx`) and all 3D cover characters (`BlenderWorld.jsx`).
-//   - Clicking any 3D figure zooms the camera directly to it (`CameraRig.jsx`).
-//   - Rotating 180 degrees behind the initial camera reveals the rear Turntable:
-//     NO vinyl sleeve — only the spinning vinyl record on the platter with the YHLQMDLG cover
-//     printed on the circular center (`YhlqmdlgMaterial` GLSL shader + KTX2 UASTC/ETC1S/PNG)
-//     and the pivoting tonearm needle.
-//   - Physical needle rule: if the needle is lifted off the vinyl (`!needleOnRecord`),
-//     no music plays. Putting the needle onto the record immediately starts playback!
+// Multi-Album Bad Bunny 180° Turntable, Retro Listening Studio & 3D Worlds Experience:
+//   1. Starts facing the empty Turntable inside the Retro Vinyl Listening Studio (`activeAlbumId === null`)
+//      with the 4 Bad Bunny vinyls fanned out in the foreground like a deck of cards.
+//   2. While no record is on the turntable, rotating 180° to any scenario and playing music are disabled.
+//   3. Clicking a vinyl in the fan hides the remaining vinyls and triggers a 3D animation that places
+//      the chosen vinyl onto the turntable platter.
+//   4. Once seated, the user can lower the needle to hear the songs, rotate 180° to explore that
+//      album's full Blender 3D scenario, or bring back the remaining unselected vinyls.
 
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import usePrefersReducedMotion from '../../../src/lib/usePrefersReducedMotion.js';
-import { createYhlqmdlgAudio } from './audioEngine.js';
+import { createBadBunnyAudio } from './audioEngine.js';
+import AlbumMaquetaStage from './components/AlbumMaquetaStage.jsx';
 import BlenderWorld from './components/BlenderWorld.jsx';
 import CameraRig from './components/CameraRig.jsx';
 import { CAMERA_POIS } from './cameraPois.js';
 import RetroHud from './components/RetroHud.jsx';
 import StormSky from './components/StormSky.jsx';
-import { TRACKS } from './tracks.js';
+import { ALBUMS_BY_ID, BAD_BUNNY_ALBUMS } from './tracks.js';
 import './route.css';
 
-const SCOPE_CLASS = 'route-yhlqmdlg';
-const CAMERA_INIT = { position: CAMERA_POIS.overview.position, fov: 50 };
+const SCOPE_CLASS = 'route-badbunny';
+const CAMERA_INIT = { position: CAMERA_POIS.turntable.position, fov: 50 };
 const DPR_CAP = [1, 1.5];
 
 export default function Route() {
   const reduced = usePrefersReducedMotion();
 
-  const [activeTrackIndex, setActiveTrackIndex] = useState(1); // #02 "La Difícil"
+  const [activeAlbumId, setActiveAlbumId] = useState(null);
+  const [selectedHistory, setSelectedHistory] = useState([]);
+  const [showVinylDeck, setShowVinylDeck] = useState(true);
+  const [placingState, setPlacingState] = useState(null);
+
+  const [activeTrackIndex, setActiveTrackIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [needleOnRecord, setNeedleOnRecord] = useState(false); // Needle starts off the record -> silence until placed!
-  const [activePoi, setActivePoi] = useState('overview');
+  const [needleOnRecord, setNeedleOnRecord] = useState(false);
+  const [activePoi, setActivePoi] = useState('turntable');
   const [hoveredPart, setHoveredPart] = useState(null);
 
   const audioRef = useRef(null);
   const needleRef = useRef(needleOnRecord);
   const trackIndexRef = useRef(activeTrackIndex);
+  const albumIdRef = useRef(activeAlbumId);
 
   useEffect(() => {
     needleRef.current = needleOnRecord;
@@ -49,7 +53,28 @@ export default function Route() {
     trackIndexRef.current = activeTrackIndex;
   }, [activeTrackIndex]);
 
-  const activeTrack = TRACKS[activeTrackIndex] || TRACKS[0];
+  useEffect(() => {
+    albumIdRef.current = activeAlbumId;
+  }, [activeAlbumId]);
+
+  const activeAlbum = activeAlbumId ? ALBUMS_BY_ID[activeAlbumId] || null : null;
+  const activeTrack = activeAlbum
+    ? activeAlbum.tracks[activeTrackIndex] || activeAlbum.tracks[0]
+    : BAD_BUNNY_ALBUMS[0].tracks[0];
+  const hasRecordSeated = Boolean(activeAlbum) && !placingState;
+
+  const deckAlbums = useMemo(() => {
+    if (!activeAlbumId && selectedHistory.length === 0) {
+      return BAD_BUNNY_ALBUMS;
+    }
+    const unselected = BAD_BUNNY_ALBUMS.filter(
+      (a) => !selectedHistory.includes(a.id) && a.id !== activeAlbumId,
+    );
+    if (unselected.length > 0) {
+      return unselected;
+    }
+    return BAD_BUNNY_ALBUMS.filter((a) => a.id !== activeAlbumId);
+  }, [activeAlbumId, selectedHistory]);
 
   // Scope class on document.documentElement and clean up on unmount (Route contract 1)
   useEffect(() => {
@@ -59,7 +84,7 @@ export default function Route() {
     };
   }, []);
 
-  // Pointer cursor feedback on 3D interactive Blender meshes, reset on unmount
+  // Pointer cursor feedback on 3D interactive meshes, reset on unmount
   useEffect(() => {
     document.body.style.cursor = hoveredPart ? 'pointer' : 'auto';
     return () => {
@@ -69,7 +94,7 @@ export default function Route() {
 
   // Mount and cleanly destroy the Web Audio / Apple Music engine on route exit
   useEffect(() => {
-    const engine = createYhlqmdlgAudio({
+    const engine = createBadBunnyAudio({
       onStateChange: (state) => {
         setIsPlaying(state.isPlaying);
       },
@@ -82,27 +107,70 @@ export default function Route() {
   }, []);
 
   const getBassEnergy = useCallback(() => {
-    if (!needleRef.current || !audioRef.current) return 0;
+    if (!needleRef.current || !audioRef.current || !albumIdRef.current) return 0;
     return audioRef.current.getBassEnergy();
   }, []);
 
-  // Selecting a track in the tracklist changes the active track.
-  // Music ONLY plays if the needle is touching the record!
-  const handleSelectTrack = useCallback((index) => {
-    setActiveTrackIndex(index);
-    if (needleRef.current && audioRef.current) {
-      audioRef.current.playTrack(index);
+  const handleStartPlaceAlbum = useCallback((nextAlbumId, startX = 0.05) => {
+    if (!ALBUMS_BY_ID[nextAlbumId]) return;
+    setShowVinylDeck(false);
+    setNeedleOnRecord(false);
+    needleRef.current = false;
+    audioRef.current?.pause();
+    setActivePoi('turntable');
+    setPlacingState({
+      albumId: nextAlbumId,
+      startX,
+      startedAt: Date.now(),
+    });
+  }, []);
+
+  const handleFinishPlaceAlbum = useCallback((finishedAlbumId) => {
+    setPlacingState(null);
+    setActiveAlbumId(finishedAlbumId);
+    setActiveTrackIndex(0);
+    albumIdRef.current = finishedAlbumId;
+    trackIndexRef.current = 0;
+
+    setSelectedHistory((prev) =>
+      prev.includes(finishedAlbumId) ? prev : [...prev, finishedAlbumId],
+    );
+
+    if (audioRef.current) {
+      audioRef.current.setAlbum(finishedAlbumId, false, 0);
     }
   }, []);
 
-  // Toggling the tonearm needle on/off the vinyl record:
-  //   - Lowering the needle onto the record starts the active track.
-  //   - Lifting the needle off the record immediately stops the music!
+  const handleToggleVinylDeck = useCallback(() => {
+    setShowVinylDeck((prev) => !prev);
+  }, []);
+
+  const handleSelectPoi = useCallback(
+    (nextPoi) => {
+      if (!hasRecordSeated && nextPoi !== 'turntable') return;
+      if (nextPoi !== 'turntable') {
+        setShowVinylDeck(false);
+      }
+      setActivePoi(nextPoi);
+    },
+    [hasRecordSeated],
+  );
+
+  const handleSelectTrack = useCallback((index) => {
+    if (!albumIdRef.current) return;
+    setActiveTrackIndex(index);
+    trackIndexRef.current = index;
+    if (needleRef.current && audioRef.current) {
+      audioRef.current.playTrack(index, albumIdRef.current);
+    }
+  }, []);
+
   const handleToggleNeedle = useCallback(() => {
+    if (!albumIdRef.current) return;
     setNeedleOnRecord((prev) => {
       const next = !prev;
       if (next) {
-        audioRef.current?.playTrack(trackIndexRef.current);
+        audioRef.current?.playTrack(trackIndexRef.current, albumIdRef.current);
       } else {
         audioRef.current?.pause();
       }
@@ -110,29 +178,51 @@ export default function Route() {
     });
   }, []);
 
+  const bgHex = activeAlbum ? activeAlbum.bgHex : '#0c1220';
+  const fogNear = activeAlbum ? activeAlbum.fogNear : 9.0;
+  const fogFar = activeAlbum ? activeAlbum.fogFar : 23.0;
+
   return (
     <div className="yhl-route">
       <div className="yhl-canvas-wrap">
         <Canvas camera={CAMERA_INIT} dpr={DPR_CAP}>
-          <color attach="background" args={['#071e3d']} />
-          <fog attach="fog" args={['#071e3d', 9.0, 23.0]} />
+          <color attach="background" args={[bgHex]} />
+          <fog attach="fog" args={[bgHex, fogNear, fogFar]} />
 
-          <ambientLight intensity={0.75} color="#cce6ff" />
-          <directionalLight position={[4.5, 8.5, 4.0]} intensity={2.2} color="#fff7e6" />
-          <directionalLight position={[-5.0, 5.0, -4.0]} intensity={1.4} color="#38bdf8" />
-
-          <StormSky
-            activeTrack={activeTrack}
-            thirdEyeActive
-            getBassEnergy={getBassEnergy}
-            reduced={reduced}
+          <ambientLight intensity={0.8} color="#e2e8f0" />
+          <directionalLight position={[4.5, 8.5, 4.0]} intensity={2.1} color="#fff7e6" />
+          <directionalLight
+            position={[-5.0, 5.0, -4.0]}
+            intensity={1.2}
+            color={activeAlbum ? activeAlbum.accentHex : '#94a3b8'}
           />
+
+          {/* Opposite-side 3D scenario is ONLY mounted once a record is seated on the turntable */}
+          {hasRecordSeated ? (
+            activeAlbum.id === 'yhlqmdlg' ? (
+              <StormSky getBassEnergy={getBassEnergy} reduced={reduced} />
+            ) : (
+              <AlbumMaquetaStage
+                album={activeAlbum}
+                activePoi={activePoi}
+                onSelectPoi={handleSelectPoi}
+                getBassEnergy={getBassEnergy}
+                reduced={reduced}
+                onHoverChange={setHoveredPart}
+              />
+            )
+          ) : null}
 
           <Suspense fallback={null}>
             <BlenderWorld
-              textureMode="uastc"
+              activeAlbumId={activeAlbumId}
+              deckAlbums={deckAlbums}
+              showVinylDeck={showVinylDeck}
+              placingState={placingState}
+              onStartPlaceAlbum={handleStartPlaceAlbum}
+              onFinishPlaceAlbum={handleFinishPlaceAlbum}
               activePoi={activePoi}
-              onSelectPoi={setActivePoi}
+              onSelectPoi={handleSelectPoi}
               needleOnRecord={needleOnRecord}
               onToggleNeedle={handleToggleNeedle}
               isPlaying={isPlaying}
@@ -144,18 +234,23 @@ export default function Route() {
             />
           </Suspense>
 
-          <CameraRig activePoi={activePoi} reduced={reduced} />
+          <CameraRig activePoi={activePoi} hasRecord={hasRecordSeated} reduced={reduced} />
         </Canvas>
       </div>
 
       <RetroHud
+        activeAlbum={activeAlbum}
+        isPlacing={Boolean(placingState)}
+        remainingCount={deckAlbums.length}
+        showVinylDeck={showVinylDeck}
+        onToggleVinylDeck={handleToggleVinylDeck}
         activeTrackIndex={activeTrackIndex}
         onSelectTrack={handleSelectTrack}
         isPlaying={isPlaying}
         needleOnRecord={needleOnRecord}
         onToggleNeedle={handleToggleNeedle}
         activePoi={activePoi}
-        onSelectPoi={setActivePoi}
+        onSelectPoi={handleSelectPoi}
         hoveredPart={hoveredPart}
       />
     </div>

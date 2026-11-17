@@ -1,16 +1,19 @@
-// covers/yhlqmdlg/src/components/RetroHud.jsx — Minimalist, immersive DOM HUD for the YHLQMDLG 3D World.
+// covers/badbunny/src/components/RetroHud.jsx — Clean Floating Dock & Tracklist Drawer HUD.
 //
-// Design per user specification:
-//   - No character POI button bar (characters are clicked directly in the 3D scene).
-//   - No Third-Eye toggle or technical clutter buttons.
-//   - No "Now Playing" bottom card.
-//   - The 20-track Vinyl Tracklist ONLY appears when the camera is at the rear 180° turntable
-//     (`activePoi === 'turntable'`), with an option to hide/show it.
+// UX Improvements per user feedback:
+//   - Removed all album metadata / descriptive text blocks from the upper HUD panel.
+//   - Moved interactive action buttons out of the upper box into a sleek, centered
+//     bottom floating dock (`.yhl-dock`) for intuitive thumb/cursor reach.
+//   - Refined the tracklist panel into a clean, collapsible song drawer.
 
 import { useState } from 'react';
-import { ALBUM_META, TRACKS } from '../tracks.js';
 
 export default function RetroHud({
+  activeAlbum,
+  isPlacing,
+  remainingCount,
+  showVinylDeck,
+  onToggleVinylDeck,
   activeTrackIndex,
   onSelectTrack,
   isPlaying,
@@ -21,27 +24,25 @@ export default function RetroHud({
   hoveredPart,
 }) {
   const [showTracks, setShowTracks] = useState(true);
-  const track = TRACKS[activeTrackIndex] || TRACKS[0];
+  const hasRecord = Boolean(activeAlbum) && !isPlacing;
   const isAtTurntable = activePoi === 'turntable';
 
+  const tracks = activeAlbum ? activeAlbum.tracks : [];
+  const track = tracks[activeTrackIndex] || tracks[0];
+  const accentColor = activeAlbum ? track?.hex || activeAlbum.accentHex : '#94a3b8';
+
   return (
-    <div className="yhl-hud" style={{ '--yhl-accent': track.hex }}>
-      {/* Compact Top-Left Badge & 180° Camera Switch */}
-      <header className="yhl-header">
-        <h1 className="yhl-title">{ALBUM_META.title}</h1>
-        <p className="yhl-subtitle">
-          <strong>{ALBUM_META.artist}</strong> · {ALBUM_META.year}
-        </p>
+    <div className="yhl-hud" style={{ '--yhl-accent': accentColor }}>
+      {/* Subtle 3D Hover Tooltip Pill (only shown when hovering an interactive 3D element) */}
+      {hoveredPart ? (
+        <div className="yhl-hover-toast" role="status">
+          <span className="yhl-hover-pill">{hoveredPart}</span>
+        </div>
+      ) : null}
 
-        <p className="yhl-hint">
-          {isAtTurntable
-            ? 'Haz clic en el brazo o en el vinilo para apoyar/levantar la aguja.'
-            : 'Haz clic en cualquier figura 3D de la calle para acercarte o gira 180° al vinilo.'}
-        </p>
-
-        {hoveredPart ? <p className="yhl-hover-pill">{hoveredPart}</p> : null}
-
-        <div className="yhl-actions">
+      {/* Bottom-Center Interactive Control Dock (replaces the old upper info + buttons box) */}
+      {hasRecord ? (
+        <nav className="yhl-dock" aria-label="Controles del tocadiscos y escenario 3D">
           {activePoi !== 'overview' && !isAtTurntable ? (
             <button
               type="button"
@@ -57,60 +58,72 @@ export default function RetroHud({
             className="yhl-btn is-turntable-btn"
             onClick={() => onSelectPoi(isAtTurntable ? 'overview' : 'turntable')}
           >
-            {isAtTurntable ? '🔄 Volver 180° a la Portada' : '🔄 Girar 180° al Tocadiscos'}
+            {isAtTurntable ? '🔄 Ir al Escenario 3D' : '🔄 Volver al Tocadiscos'}
+          </button>
+
+          <button
+            type="button"
+            className={`yhl-btn ${needleOnRecord ? 'is-needle-on' : 'is-needle-off'}`}
+            aria-pressed={needleOnRecord}
+            onClick={onToggleNeedle}
+          >
+            {needleOnRecord ? '📍 Quitar Aguja' : '📍 Poner Aguja'}
           </button>
 
           {isAtTurntable ? (
-            <>
-              <button
-                type="button"
-                className={`yhl-btn ${needleOnRecord ? 'is-needle-on' : 'is-needle-off'}`}
-                aria-pressed={needleOnRecord}
-                onClick={onToggleNeedle}
-              >
-                {needleOnRecord ? '📍 Quitar Aguja' : '📍 Poner Aguja'}
-              </button>
-
-              <button
-                type="button"
-                className={`yhl-btn ${showTracks ? 'is-active' : ''}`}
-                aria-expanded={showTracks}
-                onClick={() => setShowTracks((v) => !v)}
-              >
-                {showTracks ? '✕ Ocultar Tracklist' : '📼 Ver Tracklist'}
-              </button>
-            </>
+            <button
+              type="button"
+              className={`yhl-btn ${showVinylDeck ? 'is-active' : ''}`}
+              aria-pressed={showVinylDeck}
+              onClick={onToggleVinylDeck}
+            >
+              {showVinylDeck
+                ? '✕ Guardar vinilos'
+                : `💿 Cambiar vinilo (${remainingCount})`}
+            </button>
           ) : null}
-        </div>
-      </header>
 
-      {/* Right Side Panel: 20-Track Vinyl Tracklist — ONLY visible when at the Turntable */}
-      {isAtTurntable && showTracks ? (
-        <aside className="yhl-tracklist-panel" aria-label="Lista de 20 canciones de YHLQMDLG">
+          <button
+            type="button"
+            className={`yhl-btn ${showTracks ? 'is-active' : ''}`}
+            aria-expanded={showTracks}
+            onClick={() => setShowTracks((v) => !v)}
+          >
+            {showTracks ? '✕ Ocultar Canciones' : `🎵 Canciones (${tracks.length})`}
+          </button>
+        </nav>
+      ) : null}
+
+      {/* Sleek Right-Side Tracklist Drawer (without album info clutter) */}
+      {hasRecord && showTracks ? (
+        <aside
+          className="yhl-tracklist-panel"
+          aria-label={`Lista de ${tracks.length} canciones`}
+        >
           <div className="yhl-tracklist-header">
-            <div>
-              <h2>TRACKLIST (20)</h2>
+            <div className="yhl-now-playing">
+              <span className={`yhl-status-dot ${needleOnRecord && isPlaying ? 'is-live' : ''}`} />
               <span>
                 {needleOnRecord
-                  ? 'Aguja en el disco · Sonando'
-                  : 'Pon la aguja en el disco para sonar'}
+                  ? `Sonando #${String(track.number).padStart(2, '0')} · ${track.title}`
+                  : 'Aguja levantada'}
               </span>
             </div>
             <button
               type="button"
               className="yhl-close-tracks-btn"
               onClick={() => setShowTracks(false)}
-              aria-label="Ocultar tracklist"
+              aria-label="Ocultar canciones"
             >
               ✕
             </button>
           </div>
           <ol className="yhl-tracklist">
-            {TRACKS.map((item, idx) => {
+            {tracks.map((item, idx) => {
               const selected = idx === activeTrackIndex;
               const playingThis = selected && needleOnRecord && isPlaying;
               return (
-                <li key={item.number}>
+                <li key={`${activeAlbum.id}-${item.number}`}>
                   <button
                     type="button"
                     className={`yhl-track-row ${selected ? 'is-selected' : ''} ${playingThis ? 'is-playing' : ''}`}
