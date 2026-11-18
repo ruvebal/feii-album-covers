@@ -14,6 +14,11 @@ export const ALBUM_COVER_URLS = {
   eutdm: new URL('../public/eutdm.jpg', import.meta.url).href,
 };
 
+export const STUDIO_FRAME_URLS = {
+  banderaPr: new URL('../public/bandera_pr.png', import.meta.url).href,
+  badBunny: new URL('../public/badbunny.jpeg', import.meta.url).href,
+};
+
 function tagSrgb(texture) {
   if (Array.isArray(texture)) {
     texture.forEach((t) => {
@@ -30,5 +35,13 @@ function tagSrgb(texture) {
  */
 export function useAlbumCoverTexture(albumId) {
   const url = ALBUM_COVER_URLS[albumId] || ALBUM_COVER_URLS.yhlqmdlg;
+  return useTexture(url, tagSrgb);
+}
+
+/**
+ * Loads a studio wall frame texture (`banderaPr` or `badBunny`) from `covers/badbunny/public/`.
+ */
+export function useStudioFrameTexture(frameKey) {
+  const url = STUDIO_FRAME_URLS[frameKey] || STUDIO_FRAME_URLS.banderaPr;
   return useTexture(url, tagSrgb);
 }

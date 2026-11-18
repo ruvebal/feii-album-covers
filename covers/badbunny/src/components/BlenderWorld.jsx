@@ -6,7 +6,7 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import { Vector2 } from 'three';
 import BadBunnyMaterial from '../YhlqmdlgMaterial.jsx';
-import { useAlbumCoverTexture } from '../albumLabelTexture.js';
+import { useAlbumCoverTexture, useStudioFrameTexture } from '../albumLabelTexture.js';
 import { useBadBunnyKtx2 } from '../sleevePicture.js';
 
 export const WORLD_GLB_URL = new URL('../../public/yhlqmdlg-world.glb', import.meta.url).href;
@@ -35,6 +35,11 @@ function DownloadedAlbumLabelBranch({ albumId, ...props }) {
 
 function SleeveCoverArtMaterial({ albumId }) {
   const texture = useAlbumCoverTexture(albumId);
+  return <meshStandardMaterial map={texture} roughness={0.42} metalness={0.04} />;
+}
+
+function StudioFramePhotoMaterial({ frameKey }) {
+  const texture = useStudioFrameTexture(frameKey);
   return <meshStandardMaterial map={texture} roughness={0.42} metalness={0.04} />;
 }
 
@@ -481,17 +486,17 @@ export default function BlenderWorld({
         {/* 2.5. Retro Vinyl Studio / Listening Corner Behind & Under the Turntable */}
         {nodes.TurntableStudioRoom ? <primitive object={nodes.TurntableStudioRoom} /> : null}
 
-        {/* Framed Album Art Posters inside the two center wall gallery frames */}
+        {/* Framed Photos (Puerto Rico Flag & Bad Bunny Portrait) inside the two center wall gallery frames */}
         <mesh position={[-0.5, 1.92, 9.31]} rotation={[0, Math.PI, 0]}>
           <planeGeometry args={[0.62, 0.62]} />
           <Suspense fallback={<meshStandardMaterial color="#1e293b" />}>
-            <SleeveCoverArtMaterial albumId="uvst" />
+            <StudioFramePhotoMaterial frameKey="banderaPr" />
           </Suspense>
         </mesh>
         <mesh position={[0.5, 1.92, 9.31]} rotation={[0, Math.PI, 0]}>
           <planeGeometry args={[0.62, 0.62]} />
           <Suspense fallback={<meshStandardMaterial color="#1e293b" />}>
-            <SleeveCoverArtMaterial albumId="dtmf" />
+            <StudioFramePhotoMaterial frameKey="badBunny" />
           </Suspense>
         </mesh>
 
