@@ -1,0 +1,145 @@
+// covers/badbunny/src/tracks.js — Multi-album Bad Bunny catalog & tracklists.
+// Includes:
+//   1. YHLQMDLG (2020) — 20 tracks
+//   2. DTmF / DeBÍ TiRAR MáS FOToS (2025) — 17 tracks
+//   3. Un Verano Sin Ti (2022) — 23 tracks
+//   4. El Último Tour Del Mundo (2020) — 16 tracks
+
+export const TRACKS = [
+  { number: 1, title: 'Si Veo a Tu Mamá', feat: null, duration: '2:50', bpm: 130, hex: '#00f0ff', tint: [0.0, 0.94, 1.0] },
+  { number: 2, title: 'La Difícil', feat: null, duration: '2:43', bpm: 90, hex: '#ff2a85', tint: [1.0, 0.16, 0.52] },
+  { number: 3, title: 'Pero Ya No', feat: null, duration: '2:40', bpm: 132, hex: '#a855f7', tint: [0.66, 0.33, 0.97] },
+  { number: 4, title: 'La Santa', feat: 'Daddy Yankee', duration: '3:26', bpm: 93, hex: '#ff5500', tint: [1.0, 0.33, 0.0] },
+  { number: 5, title: 'Yo Perreo Sola', feat: null, duration: '2:52', bpm: 97, hex: '#ff00aa', tint: [1.0, 0.0, 0.67] },
+  { number: 6, title: 'Bichiyal', feat: 'Yaviah', duration: '3:16', bpm: 94, hex: '#eab308', tint: [0.92, 0.7, 0.03] },
+  { number: 7, title: 'Soliá', feat: null, duration: '2:39', bpm: 95, hex: '#38bdf8', tint: [0.22, 0.74, 0.97] },
+  { number: 8, title: 'La Zona', feat: null, duration: '2:16', bpm: 94, hex: '#22c55e', tint: [0.13, 0.77, 0.37] },
+  { number: 9, title: 'Que Malo', feat: 'Ñengo Flow', duration: '2:47', bpm: 95, hex: '#ef4444', tint: [0.94, 0.27, 0.27] },
+  { number: 10, title: 'Vete', feat: null, duration: '3:12', bpm: 92, hex: '#fb7185', tint: [0.98, 0.44, 0.52] },
+  { number: 11, title: 'Ignorantes', feat: 'Sech', duration: '3:30', bpm: 88, hex: '#60a5fa', tint: [0.38, 0.65, 0.98] },
+  { number: 12, title: 'A Tu Merced', feat: null, duration: '2:55', bpm: 92, hex: '#f43f5e', tint: [0.96, 0.25, 0.37] },
+  { number: 13, title: 'Una Vez', feat: 'Mora', duration: '3:52', bpm: 86, hex: '#818cf8', tint: [0.51, 0.55, 0.97] },
+  { number: 14, title: 'Safaera', feat: 'Jowell & Randy, Ñengo Flow', duration: '4:55', bpm: 96, hex: '#ff1e00', tint: [1.0, 0.12, 0.0] },
+  { number: 15, title: '25/8', feat: null, duration: '4:03', bpm: 152, hex: '#f59e0b', tint: [0.96, 0.62, 0.04] },
+  { number: 16, title: 'Está Cabrón Ser Yo', feat: 'Anuel AA', duration: '3:47', bpm: 138, hex: '#c084fc', tint: [0.75, 0.52, 0.99] },
+  { number: 17, title: "Puesto Pa' Guerrial", feat: 'Myke Towers', duration: '3:10', bpm: 150, hex: '#14b8a6', tint: [0.08, 0.72, 0.65] },
+  { number: 18, title: 'P FKN R', feat: 'Kendo Kaponi, Arcángel', duration: '4:18', bpm: 122, hex: '#10b981', tint: [0.06, 0.73, 0.51] },
+  { number: 19, title: 'Hablamos Mañana', feat: 'Duki, Pablo Chill-E', duration: '4:00', bpm: 118, hex: '#e11d48', tint: [0.88, 0.11, 0.28] },
+  { number: 20, title: '<3', feat: null, duration: '2:37', bpm: 89, hex: '#fde047', tint: [0.99, 0.88, 0.28] },
+];
+
+export const DTMF_TRACKS = [
+  { number: 1, title: 'NUEVAYoL', feat: null, duration: '3:03', bpm: 108, hex: '#4ade80', tint: [0.29, 0.87, 0.5] },
+  { number: 2, title: 'VOY A LLeVARTE PA PR', feat: null, duration: '2:36', bpm: 96, hex: '#22c55e', tint: [0.13, 0.77, 0.37] },
+  { number: 3, title: 'BAILE INoLVIDABLE', feat: null, duration: '6:07', bpm: 102, hex: '#facc15', tint: [0.98, 0.8, 0.08] },
+  { number: 4, title: 'PERFuMITO NUEVO', feat: 'RaiNao', duration: '3:20', bpm: 94, hex: '#a3e635', tint: [0.64, 0.9, 0.21] },
+  { number: 5, title: 'WELTiTA', feat: 'Chuwi', duration: '3:07', bpm: 112, hex: '#38bdf8', tint: [0.22, 0.74, 0.97] },
+  { number: 6, title: 'VeLDÁ', feat: 'Omar Courtz, Dei V', duration: '3:55', bpm: 95, hex: '#fb923c', tint: [0.98, 0.57, 0.24] },
+  { number: 7, title: 'EL CLúB', feat: null, duration: '3:42', bpm: 124, hex: '#f43f5e', tint: [0.96, 0.25, 0.37] },
+  { number: 8, title: 'KETU TeCRÉ', feat: null, duration: '4:10', bpm: 98, hex: '#c084fc', tint: [0.75, 0.52, 0.99] },
+  { number: 9, title: 'BOKeTE', feat: null, duration: '3:35', bpm: 92, hex: '#fbbf24', tint: [0.98, 0.75, 0.14] },
+  { number: 10, title: 'KLOuFRENS', feat: null, duration: '3:19', bpm: 96, hex: '#34d399', tint: [0.2, 0.83, 0.6] },
+  { number: 11, title: 'TURiSTA', feat: null, duration: '3:10', bpm: 84, hex: '#60a5fa', tint: [0.38, 0.65, 0.98] },
+  { number: 12, title: 'CAFé CON RON', feat: 'Los Pleneros de la Cresta', duration: '3:48', bpm: 118, hex: '#f59e0b', tint: [0.96, 0.62, 0.04] },
+  { number: 13, title: 'PIToRRO DE COCO', feat: null, duration: '3:26', bpm: 105, hex: '#fde047', tint: [0.99, 0.88, 0.28] },
+  { number: 14, title: 'LO QUE LE PASÓ A HAWAii', feat: null, duration: '3:49', bpm: 88, hex: '#10b981', tint: [0.06, 0.73, 0.51] },
+  { number: 15, title: 'EoO', feat: null, duration: '3:24', bpm: 97, hex: '#ec4899', tint: [0.93, 0.28, 0.6] },
+  { number: 16, title: 'DtMF', feat: null, duration: '3:57', bpm: 94, hex: '#86efac', tint: [0.53, 0.94, 0.67] },
+  { number: 17, title: 'LA MuDANZA', feat: null, duration: '3:33', bpm: 106, hex: '#ef4444', tint: [0.94, 0.27, 0.27] },
+];
+
+export const UVST_TRACKS = [
+  { number: 1, title: 'Moscow Mule', feat: null, duration: '4:05', bpm: 100, hex: '#ff6b4a', tint: [1.0, 0.42, 0.29] },
+  { number: 2, title: 'Después de la Playa', feat: null, duration: '3:50', bpm: 142, hex: '#facc15', tint: [0.98, 0.8, 0.08] },
+  { number: 3, title: 'Me Porto Bonito', feat: 'Chencho Corleone', duration: '2:58', bpm: 92, hex: '#fb7185', tint: [0.98, 0.44, 0.52] },
+  { number: 4, title: 'Tití Me Preguntó', feat: null, duration: '4:03', bpm: 107, hex: '#38bdf8', tint: [0.22, 0.74, 0.97] },
+  { number: 5, title: 'Un Ratito', feat: null, duration: '2:56', bpm: 93, hex: '#f97316', tint: [0.98, 0.45, 0.09] },
+  { number: 6, title: 'Yo No Soy Celoso', feat: null, duration: '3:50', bpm: 95, hex: '#34d399', tint: [0.2, 0.83, 0.6] },
+  { number: 7, title: 'Tarot', feat: 'Jhay Cortez', duration: '3:57', bpm: 114, hex: '#c084fc', tint: [0.75, 0.52, 0.99] },
+  { number: 8, title: 'Neverita', feat: null, duration: '2:53', bpm: 122, hex: '#60a5fa', tint: [0.38, 0.65, 0.98] },
+  { number: 9, title: 'La Corriente', feat: 'Tony Dize', duration: '3:18', bpm: 96, hex: '#f43f5e', tint: [0.96, 0.25, 0.37] },
+  { number: 10, title: 'Efecto', feat: null, duration: '3:33', bpm: 98, hex: '#a855f7', tint: [0.66, 0.33, 0.97] },
+  { number: 11, title: 'Party', feat: 'Rauw Alejandro', duration: '3:47', bpm: 97, hex: '#ec4899', tint: [0.93, 0.28, 0.6] },
+  { number: 12, title: 'Aguacero', feat: null, duration: '3:30', bpm: 94, hex: '#0ea5e9', tint: [0.05, 0.65, 0.91] },
+  { number: 13, title: 'Enséñame a Bailar', feat: null, duration: '2:56', bpm: 105, hex: '#eab308', tint: [0.92, 0.7, 0.03] },
+  { number: 14, title: 'Ojitos Lindos', feat: 'Bomba Estéreo', duration: '4:18', bpm: 115, hex: '#fb923c', tint: [0.98, 0.57, 0.24] },
+  { number: 15, title: 'Dos Mil 16', feat: null, duration: '3:28', bpm: 130, hex: '#f59e0b', tint: [0.96, 0.62, 0.04] },
+  { number: 16, title: 'El Apagón', feat: null, duration: '3:21', bpm: 118, hex: '#ef4444', tint: [0.94, 0.27, 0.27] },
+  { number: 17, title: 'Otro Atardecer', feat: 'The Marías', duration: '4:04', bpm: 108, hex: '#fda4af', tint: [0.99, 0.64, 0.69] },
+  { number: 18, title: 'Un Coco', feat: null, duration: '3:16', bpm: 95, hex: '#2dd4bf', tint: [0.18, 0.83, 0.75] },
+  { number: 19, title: 'Andrea', feat: 'Buscabulla', duration: '5:39', bpm: 102, hex: '#818cf8', tint: [0.51, 0.55, 0.97] },
+  { number: 20, title: 'Me Fui de Vacaciones', feat: null, duration: '3:00', bpm: 90, hex: '#4ade80', tint: [0.29, 0.87, 0.5] },
+  { number: 21, title: 'Un Verano Sin Ti', feat: null, duration: '2:28', bpm: 88, hex: '#f87171', tint: [0.97, 0.44, 0.44] },
+  { number: 22, title: 'Agosto', feat: null, duration: '2:19', bpm: 94, hex: '#fcd34d', tint: [0.99, 0.83, 0.3] },
+  { number: 23, title: 'Callaíta', feat: null, duration: '4:10', bpm: 88, hex: '#fb7185', tint: [0.98, 0.44, 0.52] },
+];
+
+export const EUTDM_TRACKS = [
+  { number: 1, title: 'EL MUNDO ES MÍO', feat: null, duration: '2:45', bpm: 112, hex: '#f97316', tint: [0.98, 0.45, 0.09] },
+  { number: 2, title: 'TE MUDASTE', feat: null, duration: '2:10', bpm: 92, hex: '#ef4444', tint: [0.94, 0.27, 0.27] },
+  { number: 3, title: 'HOY COBRÉ', feat: null, duration: '2:42', bpm: 150, hex: '#eab308', tint: [0.92, 0.7, 0.03] },
+  { number: 4, title: 'MALDITA POBREZA', feat: null, duration: '3:33', bpm: 136, hex: '#fb923c', tint: [0.98, 0.57, 0.24] },
+  { number: 5, title: 'LA NOCHE DE ANOCHE', feat: 'ROSALÍA', duration: '3:23', bpm: 86, hex: '#f43f5e', tint: [0.96, 0.25, 0.37] },
+  { number: 6, title: 'TE DESEO LO MEJOR', feat: null, duration: '2:19', bpm: 120, hex: '#f59e0b', tint: [0.96, 0.62, 0.04] },
+  { number: 7, title: 'YO VISTO ASÍ', feat: null, duration: '3:11', bpm: 146, hex: '#dc2626', tint: [0.86, 0.15, 0.15] },
+  { number: 8, title: 'HACIENDO QUE ME AMAS', feat: null, duration: '3:37', bpm: 84, hex: '#fca5a5', tint: [0.99, 0.65, 0.65] },
+  { number: 9, title: 'BOOKER T', feat: null, duration: '2:36', bpm: 118, hex: '#facc15', tint: [0.98, 0.8, 0.08] },
+  { number: 10, title: 'LA DROGA', feat: null, duration: '2:42', bpm: 126, hex: '#fb7185', tint: [0.98, 0.44, 0.52] },
+  { number: 11, title: 'DÁKITI', feat: 'Jhay Cortez', duration: '3:25', bpm: 110, hex: '#38bdf8', tint: [0.22, 0.74, 0.97] },
+  { number: 12, title: 'TRELLAS', feat: null, duration: '2:37', bpm: 116, hex: '#a855f7', tint: [0.66, 0.33, 0.97] },
+  { number: 13, title: 'SORRY PAPI', feat: 'ABRA', duration: '2:43', bpm: 96, hex: '#ec4899', tint: [0.93, 0.28, 0.6] },
+  { number: 14, title: '120', feat: null, duration: '2:31', bpm: 94, hex: '#ef4444', tint: [0.94, 0.27, 0.27] },
+  { number: 15, title: 'ANTES QUE SE ACABE', feat: null, duration: '3:41', bpm: 112, hex: '#fbbf24', tint: [0.98, 0.75, 0.14] },
+  { number: 16, title: 'CANTARES DE NAVIDAD', feat: 'Trío Vegabajeño', duration: '3:19', bpm: 108, hex: '#22c55e', tint: [0.13, 0.77, 0.37] },
+];
+
+export const BAD_BUNNY_ALBUMS = [
+  {
+    id: 'yhlqmdlg',
+    title: 'YHLQMDLG',
+    year: 2020,
+    itunesCollectionId: 1500776322,
+    accentHex: '#00f0ff',
+    bgHex: '#071e3d',
+    fogNear: 9.0,
+    fogFar: 23.0,
+    tracks: TRACKS,
+  },
+  {
+    id: 'dtmf',
+    title: 'DTmF',
+    year: 2025,
+    itunesCollectionId: 1787022393,
+    accentHex: '#4ade80',
+    bgHex: '#0d2612',
+    fogNear: 12.0,
+    fogFar: 28.0,
+    tracks: DTMF_TRACKS,
+  },
+  {
+    id: 'uvst',
+    title: 'Un Verano Sin Ti',
+    year: 2022,
+    itunesCollectionId: 1622045624,
+    accentHex: '#ff6b4a',
+    bgHex: '#e8526b',
+    fogNear: 14.0,
+    fogFar: 32.0,
+    tracks: UVST_TRACKS,
+  },
+  {
+    id: 'eutdm',
+    title: 'El Último Tour Del Mundo',
+    year: 2020,
+    itunesCollectionId: 1542061935,
+    accentHex: '#f97316',
+    bgHex: '#1a0605',
+    fogNear: 12.0,
+    fogFar: 28.0,
+    tracks: EUTDM_TRACKS,
+  },
+];
+
+export const ALBUMS_BY_ID = Object.fromEntries(
+  BAD_BUNNY_ALBUMS.map((album) => [album.id, album]),
+);

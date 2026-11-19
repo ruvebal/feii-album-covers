@@ -1,0 +1,285 @@
+/* covers/badbunny/src/route.css — Route-scoped stylesheet for /covers/badbunny.
+   All selectors live under .yhl-route / .yhl-* so they never leak to other covers. */
+
+.yhl-route {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  min-height: 660px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 35%, #1659a2 0%, #071e3d 55%, #030916 100%);
+  color: #f4f7ff;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.yhl-canvas-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* HUD overlay container: pointer-events pass through to the 3D Blender world except on HUD controls */
+.yhl-hud {
+  --yhl-accent: #ff2a85;
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Floating 3D Hover Tooltip Toast (Top-Center, non-intrusive) */
+.yhl-hover-toast {
+  position: absolute;
+  top: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 12;
+}
+
+.yhl-hover-pill {
+  display: inline-block;
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #f8fafc;
+  background: rgba(8, 18, 38, 0.82);
+  padding: 0.42rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(92, 225, 255, 0.35);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+}
+
+/* Bottom-Center Floating Action Dock */
+.yhl-dock {
+  position: absolute;
+  left: 50%;
+  bottom: 5.8rem;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.68rem;
+  background: rgba(6, 15, 32, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 999px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+  max-width: calc(100vw - 2rem);
+}
+
+.yhl-btn {
+  appearance: none;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  background: rgba(15, 32, 62, 0.82);
+  color: #f1f5f9;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.46rem 0.82rem;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+}
+
+.yhl-btn:hover {
+  border-color: #5ce1ff;
+  background: rgba(24, 58, 110, 0.94);
+  transform: translateY(-1px);
+}
+
+.yhl-btn.is-active {
+  background: var(--yhl-accent);
+  border-color: #ffffff;
+  color: #050811;
+  font-weight: 800;
+}
+
+.yhl-btn.is-turntable-btn {
+  border-color: #38bdf8;
+  background: rgba(14, 165, 233, 0.2);
+  color: #e0f2fe;
+}
+
+.yhl-btn.is-needle-on {
+  background: rgba(16, 185, 129, 0.26);
+  border-color: #10b981;
+  color: #a7f3d0;
+}
+
+.yhl-btn.is-needle-off {
+  background: rgba(244, 63, 94, 0.22);
+  border-color: #f43f5e;
+  color: #fecdd3;
+}
+
+/* Sleek Right-Side Floating Tracklist Drawer */
+.yhl-tracklist-panel {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  width: min(300px, calc(100vw - 2.5rem));
+  max-height: min(440px, calc(100vh - 11rem));
+  pointer-events: auto;
+  background: rgba(6, 14, 28, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.52);
+}
+
+.yhl-tracklist-header {
+  padding: 0.62rem 0.82rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.yhl-now-playing {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.yhl-now-playing span:last-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.yhl-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #64748b;
+  flex-shrink: 0;
+}
+
+.yhl-status-dot.is-live {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.yhl-close-tracks-btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #d8e8ff;
+  border-radius: 999px;
+  width: 24px;
+  height: 24px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.yhl-close-tracks-btn:hover {
+  border-color: #ff2a85;
+  color: #ffffff;
+}
+
+.yhl-tracklist {
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+}
+
+.yhl-track-row {
+  width: 100%;
+  appearance: none;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.03);
+  color: #e6f0ff;
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.38rem 0.52rem;
+  border-radius: 9px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.yhl-track-row:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: var(--track-color, #ff2a85);
+}
+
+.yhl-track-row.is-selected {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: var(--track-color, #ff2a85);
+  box-shadow: inset 3px 0 0 var(--track-color, #ff2a85);
+}
+
+.yhl-row-num {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.7rem;
+  color: var(--track-color, #5ce1ff);
+  font-weight: 700;
+}
+
+.yhl-row-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.yhl-row-title {
+  font-size: 0.77rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.yhl-row-feat {
+  font-size: 0.65rem;
+  color: #9ec0e6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.yhl-row-dur {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.68rem;
+  color: #8bb4de;
+}
+
+@media (max-width: 768px) {
+  .yhl-dock {
+    bottom: 6.4rem;
+    border-radius: 16px;
+    padding: 0.45rem;
+  }
+
+  .yhl-tracklist-panel {
+    top: 0.85rem;
+    right: 0.85rem;
+    left: 0.85rem;
+    width: auto;
+    max-height: 190px;
+  }
+}
