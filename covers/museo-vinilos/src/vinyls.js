@@ -17,12 +17,12 @@ const IMAGES = import.meta.glob('../../*/public/{cover,sleeve,thumbnail}.{jpg,jp
   import: 'default',
 });
 
-// Portadas reales puestas a mano en public/locales/ (carpeta ignorada por git): solo para ver el museo en local.
-// La URL se arma como texto en tiempo de ejecución, así Vite NO las ve ni las mete en el build. En producción no hay petición.
-const LOCAL_BASE = import.meta.url.slice(0, import.meta.url.lastIndexOf('/src/')) + '/public/locales/';
+// Portadas oficiales de los álbumes enlazados, en public/locales/<slug>.jpg (768 px). Hacen de relleno hasta que la ruta
+// de cada compañero llegue al registro con su propia portada, que las sustituye sola. Derechos: ver docs/ktx2-note.md.
+const LOCALES = import.meta.glob('../public/locales/*.jpg', { eager: true, query: '?url', import: 'default' });
 
 function localImage(slug) {
-  return import.meta.env.DEV && slug ? `${LOCAL_BASE}${slug}.jpg` : null;
+  return (slug && LOCALES[`../public/locales/${slug}.jpg`]) || null;
 }
 
 function imageFor(slug) {
