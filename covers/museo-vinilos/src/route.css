@@ -1,0 +1,349 @@
+/* Museo de vinilos: todo cuelga de .museo. La clase de ámbito vive en <html> mientras la ruta está montada. */
+.museo {
+  --mc-panel: rgba(24, 20, 16, 0.78);
+  --mc-edge: #5b4a34;
+  --mc-ink: #f1ead8;
+  --mc-accent: #ffd35a;
+  position: fixed;
+  inset: 0;
+  background: #14161c;
+  color: var(--mc-ink);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  overflow: hidden;
+}
+.museo__scene {
+  touch-action: none; /* el dedo mira, no desplaza la página */
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+}
+.museo__title {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  max-width: min(60vw, 420px);
+  padding: 10px 14px;
+  background: var(--mc-panel);
+  border: 2px solid var(--mc-edge);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+.museo__title h1 {
+  margin: 0;
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.museo__title p {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+.museo__cross {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  mix-blend-mode: difference;
+}
+.museo__cross::before,
+.museo__cross::after {
+  content: '';
+  position: absolute;
+  background: #fff;
+}
+.museo__cross::before {
+  left: 8px;
+  top: 0;
+  width: 2px;
+  height: 18px;
+}
+.museo__cross::after {
+  top: 8px;
+  left: 0;
+  height: 2px;
+  width: 18px;
+}
+.museo__cross[data-on='true']::before {
+  background: var(--mc-accent);
+}
+.museo__cross[data-on='true']::after {
+  background: var(--mc-accent);
+}
+.museo__tip {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 34px);
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 6px 12px;
+  background: var(--mc-panel);
+  border: 2px solid var(--mc-edge);
+  font-size: 0.85rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.museo__tip:empty {
+  display: none;
+}
+.museo__tip--play {
+  top: auto;
+  bottom: 72px;
+}
+.museo__tip--play span {
+  color: var(--mc-accent);
+  margin-left: 8px;
+}
+.museo__help {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 72px;
+  margin: 0;
+  max-width: calc(100vw - 32px);
+  padding: 6px 10px;
+  background: var(--mc-panel);
+  border: 2px solid var(--mc-edge);
+  font-size: 0.72rem;
+  pointer-events: none;
+}
+.museo__list {
+  position: absolute;
+  z-index: 6; /* por encima del panel de error: es la salida si la sala no carga */
+  top: 16px;
+  right: 16px;
+  max-width: min(70vw, 320px);
+}
+.museo__list details {
+  background: var(--mc-panel);
+  border: 2px solid var(--mc-edge);
+}
+.museo__list summary {
+  cursor: pointer;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  list-style: none;
+}
+.museo__list summary::-webkit-details-marker {
+  display: none;
+}
+.museo__list summary:focus-visible,
+.museo__list button:focus-visible {
+  outline: 3px solid var(--mc-accent);
+  outline-offset: 2px;
+}
+.museo__list ul {
+  margin: 0;
+  padding: 4px 8px 8px;
+  list-style: none;
+  max-height: 50vh;
+  overflow: auto;
+}
+.museo__list button {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  text-align: left;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--mc-ink);
+  background: #3a3126;
+  border: 2px solid #6b5a42;
+  cursor: pointer;
+}
+.museo__list button:hover:not(:disabled) {
+  background: #4b3f30;
+}
+.museo__list button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.museo__empty {
+  font-size: 0.78rem;
+  opacity: 0.75;
+  padding: 4px 2px;
+}
+.museo__loader {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  background: #14161c;
+  text-align: center;
+  padding: 24px;
+}
+.museo__loader p {
+  margin: 0;
+  max-width: 44ch;
+}
+.museo__cube {
+  width: 40px;
+  height: 40px;
+  background: #6b4423;
+  box-shadow: inset -6px -6px 0 #4a2f18, inset 6px 6px 0 #8a5a30;
+  animation: museo-spin 1.4s steps(8) infinite;
+}
+@keyframes museo-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.museo__fade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+}
+.museo__budget {
+  position: absolute;
+  right: 16px;
+  top: 64px;
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--mc-panel);
+  border: 2px solid var(--mc-edge);
+  font-size: 0.72rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .museo__cube {
+    animation: none;
+  }
+}
+@media (max-width: 720px) {
+  .museo__help {
+    display: none;
+  }
+}
+.museo__card {
+  position: absolute;
+  left: 50%;
+  bottom: 132px;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 3px;
+  max-width: min(86vw, 420px);
+  padding: 10px 14px;
+  background: var(--mc-panel);
+  border: 2px solid var(--mc-edge);
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+.museo__card strong {
+  font-size: 0.95rem;
+}
+.museo__card em {
+  color: var(--mc-accent);
+  font-style: normal;
+}
+.museo__status {
+  opacity: 0.85;
+}
+.museo__credit {
+  position: absolute;
+  top: 92px;
+  left: 16px;
+  margin: 0;
+  max-width: min(60vw, 420px);
+  font-size: 0.68rem;
+  opacity: 0.7;
+}
+.museo__credit a {
+  color: inherit;
+}
+.museo__list small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.68rem;
+  opacity: 0.75;
+}
+
+/* viñeta suave: oscurece los bordes y lleva la mirada al centro */
+.museo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.38) 100%);
+}
+
+.museo__notice {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  gap: 10px;
+  width: min(90vw, 420px);
+  padding: 18px 20px;
+  background: rgba(24, 20, 16, 0.94);
+  border: 2px solid var(--mc-accent);
+  text-align: left;
+  z-index: 5;
+}
+.museo__notice h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.museo__notice p {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+.museo__notice button {
+  justify-self: start;
+  padding: 8px 14px;
+  font: inherit;
+  color: #1b150d;
+  background: var(--mc-accent);
+  border: 2px solid #6b5a42;
+  cursor: pointer;
+}
+.museo__notice button:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+.museo__pad {
+  position: absolute;
+  inset: auto 14px 78px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none;
+  z-index: 4;
+}
+.museo__dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 52px);
+  grid-template-rows: repeat(2, 52px);
+  gap: 6px;
+  pointer-events: auto;
+}
+.museo__pad button {
+  font: inherit;
+  font-size: 1.1rem;
+  color: var(--mc-ink);
+  background: rgba(24, 20, 16, 0.78);
+  border: 2px solid var(--mc-edge);
+  touch-action: none;
+  pointer-events: auto;
+}
+.museo__pad-KeyW { grid-column: 2; grid-row: 1; }
+.museo__pad-KeyA { grid-column: 1; grid-row: 2; }
+.museo__pad-KeyS { grid-column: 2; grid-row: 2; }
+.museo__pad-KeyD { grid-column: 3; grid-row: 2; }
+.museo__pad-act {
+  width: 64px;
+  height: 64px;
+  color: #1b150d !important;
+  background: var(--mc-accent) !important;
+}

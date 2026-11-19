@@ -1,0 +1,4 @@
+Portadas reales para ver el museo en tu ordenador. Esta carpeta NO se sube a git (ver .gitignore).
+Pon aqui la imagen de cada vinilo con el nombre de su slug: mosca.jpg, queen-bohemian-rhapsody.jpg, off-the-wall.jpg, currents.jpg, everything-at-once.jpg, bad-bunny.jpg
+(.jpg, .jpeg, .png o .webp). Si la ruta del companero ya esta en el registro con su imagen, se usa la de la ruta.
+Publicar una portada comercial en GitHub Pages exige permiso del titular (enunciado, D8): estas imagenes no deben salir de tu maquina.
