@@ -1,6 +1,6 @@
 // Las canciones del disco: fragmentos oficiales de 30 s de Apple Music
-// (iTunes Search API, álbum 186166282). En el repositorio no hay ningún audio:
-// la lista se pide al entrar (las direcciones de Apple pueden cambiar) y cada
+// (iTunes Search API, álbum 186166282). La lista se pide al entrar
+// (las direcciones de Apple pueden cambiar) y cada
 // fragmento se reproduce directamente desde Apple.
 //
 // Apple sirve los fragmentos con CORS abierto, así que se pueden pasar por un
@@ -8,6 +8,48 @@
 // Michael lleva el ritmo y la luz de la pared late (task2).
 
 const ALBUM_ID = 186166282;
+
+/**
+ * Los discos que se pueden poner en el tocadiscos del plató: id del álbum en
+ * Apple Music, título, año, color de la etiqueta y ritmo para el baile de
+ * fondo. Off the Wall es el del panel; los otros, los de la mesa.
+ */
+export const RECORDS = {
+  otw: { id: ALBUM_ID, title: 'Off the Wall', artist: 'Michael Jackson', year: 1979, label: '#8a2420' },
+  diana: { id: 1443221837, title: 'Diana Ross Presents The Jackson 5', artist: 'Jackson 5', year: 1969, label: '#7a3fa0', groove: { bpm: 100, feel: 'funk' } },
+  abc: { id: 1442885957, title: 'ABC', artist: 'Jackson 5', year: 1970, label: '#2a7bc9', groove: { bpm: 112, feel: 'funk' } },
+  xmas: { id: 1452949481, title: 'Christmas Album', artist: 'Jackson 5', year: 1970, label: '#2f7a3a', groove: { bpm: 96, feel: 'smooth' } },
+  jacksons: { id: 200605281, title: 'The Jacksons', artist: 'The Jacksons', year: 1976, label: '#c9962a', groove: { bpm: 118, feel: 'disco' } },
+  // El disco de 1982 y los tres de los Jackson 5 del tocadiscos moderno.
+  thriller: { id: 269572838, title: 'Thriller', artist: 'Michael Jackson', year: 1982, label: '#d8342b', groove: { bpm: 118, feel: 'funk' }, deck: 'modern' },
+  third: { id: 1443186631, title: 'Third Album', artist: 'Jackson 5', year: 1970, label: '#e07a1f', groove: { bpm: 104, feel: 'smooth' }, deck: 'modern' },
+  maybe: { id: 1442861308, title: 'Maybe Tomorrow', artist: 'Jackson 5', year: 1971, label: '#2a5fa8', groove: { bpm: 100, feel: 'smooth' }, deck: 'modern' },
+  windows: { id: 1442992520, title: "Lookin' Through the Windows", artist: 'Jackson 5', year: 1972, label: '#3f8a4c', groove: { bpm: 112, feel: 'funk' }, deck: 'modern' },
+};
+
+/** Canciones de un disco (título y fragmento de 30 s), en orden; se guardan en caché. */
+const albumCache = new Map();
+export function loadRecord(key) {
+  if (!albumCache.has(key)) {
+    const url = `https://itunes.apple.com/lookup?id=${RECORDS[key].id}&entity=song&country=es`;
+    albumCache.set(
+      key,
+      fetch(url)
+        .then((r) => r.json())
+        .then((data) =>
+          data.results
+            .filter((r) => r.wrapperType === 'track' && r.previewUrl)
+            .sort((a, b) => a.discNumber - b.discNumber || a.trackNumber - b.trackNumber)
+            .map((r) => ({ title: r.trackName, url: r.previewUrl })),
+        )
+        .catch(() => {
+          albumCache.delete(key);
+          return [];
+        }),
+    );
+  }
+  return albumCache.get(key);
+}
 /** Página del disco en Apple Music (enlace fijo para el DOM). */
 export const ALBUM_URL = 'https://music.apple.com/es/album/off-the-wall/186166282';
 const LOOKUP = `https://itunes.apple.com/lookup?id=${ALBUM_ID}&entity=song&country=es`;
@@ -30,6 +72,7 @@ export function createPlayer({ onChange, onProgress }) {
   let bins = null;
   let fadeTimer = 0;
   let autoNext = true;
+  let volume = 1;
 
   const aborter = new AbortController();
   const ready = fetch(LOOKUP, { signal: aborter.signal })
@@ -64,19 +107,24 @@ export function createPlayer({ onChange, onProgress }) {
     gain.gain.linearRampToValueAtTime(v, t + secs);
   }
 
+  // Lo que suena: el disco del panel (previews) o uno de la mesa del plató.
+  /** @type {string[] | null} */
+  let queue = null;
+  const list = () => queue ?? previews;
+
   async function play(i) {
     await ready;
-    if (!previews[i]) return false;
+    if (!list()[i]) return false;
     ensureGraph();
     if (ctx.state === 'suspended') await ctx.resume();
     window.clearTimeout(fadeTimer);
     current = i;
     onChange(current);
-    audio.src = previews[i];
+    audio.src = list()[i];
     gain.gain.value = 0;
     try {
       await audio.play();
-      if (current === i) fadeTo(1, 0.3);
+      if (current === i) fadeTo(volume, 0.3);
       return true;
     } catch {
       if (current === i) {
@@ -102,7 +150,7 @@ export function createPlayer({ onChange, onProgress }) {
   // Al acabar un fragmento suena el siguiente, como el disco entero.
   const onEnded = () => {
     const next = current + 1;
-    if (autoNext && previews[next]) play(next);
+    if (autoNext && list()[next]) play(next);
     else {
       current = -1;
       onChange(current);
@@ -120,7 +168,15 @@ export function createPlayer({ onChange, onProgress }) {
     stop,
     /** Siguiente canción del disco (vuelve a la primera tras la última). */
     next() {
-      return play(current < 0 ? 0 : (current + 1) % Math.max(previews.length, 1));
+      return play(current < 0 ? 0 : (current + 1) % Math.max(list().length, 1));
+    },
+    /** Cambia de disco: `urls` de los fragmentos, o null para volver a Off the Wall. */
+    setQueue(urls) {
+      queue = urls;
+    },
+    setVolume(value) {
+      volume = Math.max(0, Math.min(1, value));
+      if (gain && current >= 0) fadeTo(volume, 0.3);
     },
     setAutoNext(v) {
       autoNext = v;
