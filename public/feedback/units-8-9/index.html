@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FE II Units 8 and 9 feedback</title>
+  <meta name="description" content="Common feedback for the FE II album-cover routes: the rubric, merge judgement and process discipline explained, cohort findings, and a link to each team's issue.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@700&family=Karla:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./page.css">
+</head>
+<body>
+  <header class="nav">
+    <div class="container nav__row">
+      <a class="nav__mark" href="https://ruvebal.github.io/feii-album-covers/">FE II album covers</a>
+      <a class="btn" href="#issues">Your issue</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero__grid">
+        <div class="hero__text">
+          <h1 id="hero-title">Who stayed the author</h1>
+          <p class="lead">Feedback on eight album-cover routes and the fixes that raise each mark.</p>
+          <div class="actions">
+            <a class="btn btn--primary" href="#issues">Find your issue</a>
+            <a class="btn" href="#rubric">Read the rubric</a>
+          </div>
+        </div>
+        <dl class="facts">
+          <div class="facts__cell"><dt>Routes reviewed</dt><dd class="num">8</dd></div>
+          <div class="facts__cell"><dt>Criteria</dt><dd class="num">7</dd></div>
+          <div class="facts__cell facts__cell--wide"><dt>Fixes are filed as</dt><dd>task5</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="section" id="rubric" aria-labelledby="rubric-title">
+      <div class="container">
+        <div class="head head--split">
+          <h2 id="rubric-title">Three groups, seven criteria</h2>
+          <p class="lead">Weights follow the <a href="https://ruvebal.github.io/web-atelier-udit/evaluation/en/">Web Atelier evaluation rationale</a>.</p>
+        </div>
+        <div class="groups">
+          <article class="group">
+            <h3 class="group__fill group__fill--tech">Technical <span class="num">40%</span></h3>
+            <ul class="crit">
+              <li><span>Code craft</span><span class="num">20</span></li>
+              <li><span>Route contract and runtime QA</span><span class="num">20</span></li>
+            </ul>
+          </article>
+          <article class="group">
+            <h3 class="group__fill group__fill--refl">Reflection <span class="num">35%</span></h3>
+            <ul class="crit">
+              <li><span>AI usage declared</span><span class="num">15</span></li>
+              <li><span>Merge judgement</span><span class="num">10</span></li>
+              <li><span>Rights and documents</span><span class="num">10</span></li>
+            </ul>
+          </article>
+          <article class="group">
+            <h3 class="group__fill group__fill--conc">Conceptual <span class="num">25%</span></h3>
+            <ul class="crit">
+              <li><span>Covenant bars</span><span class="num">15</span></li>
+              <li><span>Process discipline</span><span class="num">10</span></li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--l" id="explained" aria-labelledby="explained-title">
+      <div class="container rows-grid">
+        <h2 id="explained-title">Two criteria, explained</h2>
+        <div class="rows">
+          <article class="row">
+            <h3><span class="key key--refl" aria-hidden="true"></span>Merge judgement</h3>
+            <p>Your <code>ai-3d-merge-log.md</code> records each assistant suggestion you kept, refused or escalated, with the gate and the reason. Two real refusals is the floor. A log of only accepts shows compliance, not judgement.</p>
+          </article>
+          <article class="row">
+            <h3><span class="key key--conc" aria-hidden="true"></span>Process discipline</h3>
+            <p>How the work reaches main: small staged PRs, task1 before task2 before task3, the branch pattern, the template filled in, one registry line. A reviewer should read each PR in one sitting.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="flop-title">
+      <div class="container">
+        <h2 id="flop-title" class="statement">A route should be as small as its idea</h2>
+        <ul class="signs" aria-label="What costs points">
+          <li>One file past five hundred lines</li>
+          <li>State the reader cannot hold</li>
+          <li>A patch that hides a broken asset</li>
+          <li>A log the assistant wrote for you</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="findings-title">
+      <div class="container rows-grid">
+        <div class="head">
+          <h2 id="findings-title">What the cohort shares</h2>
+        </div>
+        <dl class="findings">
+          <div><dt>No peer reviews yet</dt><dd>task4 asks for one formal review outside your slug.</dd></div>
+          <div><dt>Rights block more than code</dt><dd>Three routes wait on D8: own art, open licences or written permission.</dd></div>
+          <div><dt>The registry is shared</dt><dd>Add one line, sorted by slug. Never re-wrap the array.</dd></div>
+          <div><dt>Verified means you checked</dt><dd>Checks the assistant ran go in the left column, not yours.</dd></div>
+          <div><dt>Mind the gallery corner</dt><dd>The gallery navigation owns the bottom left. Keep titles clear of it.</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="section section--l" id="issues" aria-labelledby="issues-title">
+      <div class="container">
+        <div class="head head--split">
+          <h2 id="issues-title">Find your issue</h2>
+          <p class="lead">Open one PR named <code>cover-&lt;slug&gt;-task5-fixes</code> that closes it.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Route</th><th scope="col">Album</th><th scope="col">Your issue</th><th scope="col">PRs reviewed</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">badbunny</th><td>Bad Bunny</td><td><a href="https://github.com/ruvebal/feii-album-covers/issues/23">Issue 23</a></td><td class="num"><a href="https://github.com/ruvebal/feii-album-covers/pull/17">17</a></td></tr>
+              <tr><th scope="row">bia</th><td>Supertramp, Breakfast in America</td><td><a href="https://github.com/ruvebal/feii-album-covers/issues/25">Issue 25</a></td><td class="num"><a href="https://github.com/ruvebal/feii-album-covers/pull/15">15</a></td></tr>
+              <tr><th scope="row">currents</th><td>Tame Impala, Currents</td><td><a href="https://github.com/ruvebal/feii-album-covers/issues/21">Issue 21</a></td><td class="num"><a href="https://github.com/ruvebal/feii-album-covers/pull/12">12</a></td></tr>
+              <tr><th scope="row">everything-at-once</th><td>Texas Red, Everything at Once</td><td><a href="https://github.com/ruvebal/feii-album-covers/issues/20">Issue 20</a></td><td class="num"><a href="https://github.com/ruvebal/feii-album-covers/pull/10">10</a></td></tr>
+              <tr><th scope="row">museo-vinilos</th><td>Museo de vinilos</td><td><a href="https://github.com/ruvebal/feii-album-covers/issues/24">Issue 24</a></td><td class="num"><a href="https://github.com/ruvebal/feii-album-covers/pull/14">14</a></td></tr>
+              <tr><th scope="row">off-the-wall</th><td>Michael Jackson, Off the Wall</td><td><a href="https://github.com/ruvebal/feii-album-covers/issues/26">Issue 26</a></td><td class="num"><a href="https://github.com/ruvebal/feii-album-covers/pull/8">8</a>, <a href="https://github.com/ruvebal/feii-album-covers/pull/9">9</a></td></tr>
+              <tr><th scope="row">por-si-manana-no-estoy</th><td>Omar Courtz, Por Si Mañana No Estoy</td><td><a href="https://github.com/ruvebal/feii-album-covers/issues/22">Issue 22</a></td><td class="num"><a href="https://github.com/ruvebal/feii-album-covers/pull/7">7</a></td></tr>
+              <tr><th scope="row">queen-bohemian-rhapsody</th><td>Queen, Bohemian Rhapsody</td><td><a href="https://github.com/ruvebal/feii-album-covers/issues/19">Issue 19</a></td><td class="num"><a href="https://github.com/ruvebal/feii-album-covers/pull/11">11</a>, <a href="https://github.com/ruvebal/feii-album-covers/pull/13">13</a>, <a href="https://github.com/ruvebal/feii-album-covers/pull/16">16</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="container foot__grid">
+      <p class="foot__close">Grades go through the course platform. This page and your issue hold the reasons.</p>
+      <ul class="foot__links">
+        <li><a href="https://ruvebal.github.io/web-atelier-udit/lessons/en/feii/units-8-9-assignment/">Units 8 and 9 assignment</a></li>
+        <li><a href="https://ruvebal.github.io/web-atelier-udit/lessons/en/feii/ai-assisted-3d-covenant/">AI-assisted 3D covenant</a></li>
+        <li><a href="https://github.com/ruvebal/feii-album-covers/blob/main/CONTRIBUTING.md">Contributing guide</a></li>
+      </ul>
+      <p class="foot__legal">Prepared with Claude Code at the instructor’s request. AI never grades, approves or merges.</p>
+    </div>
+  </footer>
+</body>
+</html>
