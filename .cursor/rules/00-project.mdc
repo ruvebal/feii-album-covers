@@ -38,7 +38,7 @@ alwaysApply: true
 ## Git hygiene
 - Branch `cover-<slug>-task<N>-<short-topic-name>` from `main`; change only your slug + one registry object
 - Never commit uncompressed multi-megabyte PNGs as runtime textures; ship the chosen KTX2 when you use KTX2
-- Rights follow D8 (`CONTRIBUTING.md` § Rights): only your own artwork, public domain, an open licence permitting public adaptation, or written permission. Owning the album is not permission
+- Rights follow D8 (`CONTRIBUTING.md` § Rights): only your own artwork, public domain, an open licence permitting public adaptation, or written permission. Owning the album is not permission, and hotlinking a remote image is not a way round it (official players/embeds and text links only)
 
 ## When unsure
 - Read `CONTRIBUTING.md` (route contract, PR ritual) and your route's `docs/` before adding effects
