@@ -277,9 +277,11 @@ const sdStar = Fn(([p0, r, rf]) => {
  * plate, a soft halo, and a shimmer running around it, on the cover's night. To keep the page alive (user, 10 Nov):
  * the star pulses on the beat, Karu's four-point glints twinkle around it, a riso halftone and paper grain drift
  * over the night, dust floats up, and with the record playing sound rings ripple out from the disc. No texture.
+ * `veil` (a 0..1 uniform) makes the same page a veil drawn over everything with that opacity: the record fades in
+ * under it as it lifts (Record.jsx Backdrop), the same pixels as the page itself.
  */
-export function backdropMaterial() {
-  const m = new THREE.MeshBasicNodeMaterial({ depthWrite: false });
+export function backdropMaterial(veil = null) {
+  const m = new THREE.MeshBasicNodeMaterial(veil ? { depthWrite: false, depthTest: false, transparent: true } : { depthWrite: false });
   // The quad is the clip rect at the far end of the depth range: drawn after the opaque record (Record.jsx), it
   // fails the depth test wherever the record already covers the page, so those pixels skip this shader.
   m.vertexNode = vec4(positionGeometry.xy, 0.9999, 1);
@@ -347,7 +349,7 @@ export function backdropMaterial() {
       .add(tint.mul(ring.mul(0.3)))
       .add(mix(color('#ffc9e4'), tint, MIRROR.tintMix).mul(dust.mul(0.3)))
       .add(color('#fff6d8').mul(spark.mul(0.75)));
-    return vec4(recede(lit.min(1), RECEDE), 1);
+    return vec4(recede(lit.min(1), RECEDE), veil ?? 1);
   })();
   return m;
 }

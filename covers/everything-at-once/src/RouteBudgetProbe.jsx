@@ -26,7 +26,7 @@ function describe(gl) {
   return `WebGL 2 · ${ext ? b.gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : 'renderer unknown'}`;
 }
 
-/** @param {{ onSample: (s: import('../../../src/lib/types.js').BudgetSample & { fps?: object }) => void, fps?: boolean, debug?: boolean }} props */
+/** @param {{ onSample?: (s: import('../../../src/lib/types.js').BudgetSample & { fps?: object }) => void, fps?: boolean, debug?: boolean }} props */
 export default function RouteBudgetProbe({ onSample, fps = false, debug = false }) {
   const get = useThree((state) => state.get);
   const wait = useRef(0);
@@ -77,7 +77,7 @@ export default function RouteBudgetProbe({ onSample, fps = false, debug = false 
           size: `${size.width}×${size.height}`,
         };
       }
-      onSample(sample);
+      onSample?.(sample);
     }
     gl.info.reset();
   });

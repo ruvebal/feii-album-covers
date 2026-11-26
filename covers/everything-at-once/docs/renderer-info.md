@@ -69,3 +69,15 @@ The 6 Nov readings come from software rendering; from 7 Nov the headless checks 
 V1 geometry reduction (Blender, `scripts/build_web.py`; that scene is retired, the numbers are kept as history): 2,345,131 → ~300,000 triangles. Ship subdivision 2 → 0, console subdivision 2 → 1, cable curve resolution 12 → 6, Decimate (collapse) on meshes heavier than their share of the frame (the four coins 229,600 → 3,000 each). Lights, the backdrop cube and props outside the cover camera removed. Flat-shaded renders from the cover camera before/after: mean difference 0.5/255; only the bottle edge and the console cable change visibly.
 
 `memory.textures` is a texture **count**, not bytes. With every map null it already reads 1 (three's empty placeholder); the sleeve picture is one more.
+
+## Audio delivery (26 Nov 2026)
+
+The six excerpts each ship in Opus and M4A for browser compatibility: Opus totals 1,845,101 bytes, M4A totals 2,472,522 bytes, and all twelve files total 4,317,623 bytes on disk. These are shipped asset sizes, not the initial page download or GPU memory.
+
+`src/audio.js` prefers Opus when `Audio.canPlayType('audio/ogg; codecs=opus')` reports support, otherwise M4A. It selects one URL per requested song (falling back to an available extension if the preferred file is absent), fetches that encoding on demand and caches the decoded buffer for the transport's lifetime. It does not download both encodings per song or retry a different codec after a network/decode failure. Closing the transport clears the buffer cache, closes its AudioContext, cancels resume/suspend timers, and ignores late resume completion.
+
+## Combined audit follow-up (26 Nov 2026)
+
+With no member initially selected, the first record view no longer waits for the five hero GLBs/textures: 4,403,963 file bytes are deferred until their members are first selected. Each hero has its own Suspense boundary, so a slow hero leaves the record visible. Once visited, a hero stays mounted until leaving the route; returning to that member reuses it. The plate textures still load with the record. Existing full-scene budget rows above remain historical hardware measurements; these changes do not alter the rendered geometry or accepted ceiling.
+
+Normal visits keep the budget probe mounted but no longer subscribe the route to its once-per-second React state updates. Debug visits still display samples. The fixed 55 FPS downshift threshold is retained: Drei's refresh-rate argument is its highest observed FPS, not an independent display measurement. Using `min(55, refresh - 5)` would also stop downshifting a genuinely slow GPU whose peak was below 55 FPS. OS-capped displays may still reduce DPR; changing that policy needs a reliable independent signal or a deliberate quality/performance trade-off.

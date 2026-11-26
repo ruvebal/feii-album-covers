@@ -9,11 +9,11 @@
 // zones: the sleeve's outline and the vinyl's edge (or the exposed disc), and shows the member's text while their
 // hero is presented.
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three/webgpu';
-import { MathUtils, Vector3 } from 'three/webgpu';
-import { color, float, length, mix, sin, uv, vec3 } from 'three/tsl';
+import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from 'three/webgpu';
+import { color, float, length, mix, sin, uniform, uv, vec3 } from 'three/tsl';
 import { useKTX2Texture } from '../../../src/lib/ktx2.js';
 import { faceMaterial, MIRROR, mirrorMaterial, BACKDROP, BIG, backdropMaterial, useReleaseOnUnmount } from './materials.js';
 import LAYERS from './layers.json';
@@ -54,6 +54,113 @@ const TINTS = Object.fromEntries(MEMBERS.map((mb) => [mb.id, mb.tint])); // read
 const STAR = new Vector3(); // the star's centre, projected for the backdrop star
 const ORDER = new Int8Array(8);
 const HULL = new Int8Array(9);
+/** The opening's ease for a spread (0 flat and far, 1 settled): smoothstep. */
+const ease = (spread) => {
+  const o = 1 - spread;
+  return o * o * (3 - 2 * o);
+};
+
+/**
+ * The page is the canvas: the sleeve at rest fills the rest box (recordBox), from the same distance as ever, so the
+ * layers' depth compensation and the heroes' registration hold. Only the frustum changes: the field of view scales
+ * the sleeve to the box and the view offset centres it there. Returns the box.
+ */
+function frameCamera(camera, size) {
+  const box = recordBox(size.width, size.height);
+  const { S, x, y } = box;
+  camera.fov = (2 * Math.atan((HALF_FOV_TAN * size.height) / S) * 180) / Math.PI;
+  camera.setViewOffset(size.width, size.height, size.width / 2 - x, size.height / 2 - y, size.width, size.height);
+  camera.updateProjectionMatrix();
+  return box;
+}
+
+/**
+ * The backdrop's uniforms: the star on the record's star centre (`cx`, `cy`, CSS px) at `unit` px per sleeve unit,
+ * the opening's rush `e`, and its life (time, the beat: the song's `clock` or a slow breath on the silent tempo).
+ * Settled, the whole star stays on the page (user, 10 Nov: the top tip ran off): tip to lower tips (0.809 of the
+ * radius down) fits between margins at the top and bottom, and the star moves down off the record's star only as
+ * far as that needs. Its lower tips fall either side of the navigation's buttons.
+ */
+function placeBackdrop(size, box, cx, cy, unit, e, dt, reduced, clock, rings) {
+  const gap = 1.5 * box.rem;
+  const r = Math.min(unit * BIG, (size.height - 2 * gap) / 1.809);
+  BACKDROP.unit.value = r / BIG;
+  BACKDROP.centre.value.set(cx, MathUtils.clamp(cy, gap + r, size.height - gap - 0.809 * r));
+  BACKDROP.view.value.set(size.width, size.height);
+  BACKDROP.rush.value = e;
+  const beat = clock ? clock.beat % 64 : (BACKDROP.beat.value + (dt * BPM) / 60) % 64;
+  BACKDROP.beat.value = beat;
+  if (!reduced) {
+    BACKDROP.time.value = (BACKDROP.time.value + dt) % 1000;
+    MIRROR.shimmer.value = (MIRROR.shimmer.value + dt * 1.6) % (Math.PI * 2); // the lights' shimmer runs
+  }
+  BACKDROP.pulse.value = reduced ? 0 : clock ? Math.exp(-(beat % 1) * 5) : 0.25 - 0.25 * Math.cos((beat / 4) * Math.PI * 2);
+  BACKDROP.rings.value = approach(BACKDROP.rings.value, rings ? 1 : 0, dt, 2);
+}
+
+// Record drives the backdrop once it has loaded; until then Backdrop holds the record's first pose.
+let recordDrives = false;
+const POSE = new Matrix4();
+const POSE_P = new Vector3();
+const POSE_Q = new Quaternion();
+const POSE_E = new Euler();
+const ONE = new Vector3(1, 1, 1);
+const VEIL_TIME = 0.8; // s: the record fades in once loaded
+const VEIL = uniform(1); // module scope, like the other uniforms: the lint forbids mutating a hook's value
+
+/**
+ * The page behind the record: one full-screen quad, behind everything (depth), drawn after the opaque record and
+ * before the transparent layers, so the pixels the record hides are never shaded. It needs no texture, so it draws
+ * from the canvas's first frame, behind the loader, and the page never changes when the record arrives.
+ * @param {{ spread: { current: number }, reduced: boolean }} props
+ */
+export function Backdrop({ spread, reduced }) {
+  const mat = useMemo(() => backdropMaterial(), []);
+  const veilMat = useMemo(() => backdropMaterial(VEIL), []);
+  useEffect(() => {
+    VEIL.value = 1; // a new visit: the record fades in again once loaded
+    return () => {
+      mat.dispose();
+      veilMat.dispose();
+    };
+  }, [mat, veilMat]);
+  const s = useRef({ w: 0, h: 0, box: null });
+  const veilMesh = useRef();
+  useFrame(({ camera, gl, size }, delta) => {
+    gl.domElement.dataset.drawn ??= ''; // the canvas fades in from its first frame (route.css)
+    if (recordDrives) {
+      // The record has loaded: it fades in as the page drawn over it lifts (one extra draw, only while it does).
+      VEIL.value = reduced ? 0 : Math.max(0, VEIL.value - Math.min(delta, 0.05) / VEIL_TIME);
+      veilMesh.current.visible = VEIL.value > 0;
+      return;
+    }
+    const st = s.current;
+    if (size.width !== st.w || size.height !== st.h) {
+      st.w = size.width;
+      st.h = size.height;
+      st.box = frameCamera(camera, size);
+    }
+    // the record's pose on its first frame: upright on the front, tilted and pushed back by the opening (Record)
+    const e = ease(spread.current);
+    POSE.compose(POSE_P.set(0, 0, -e * 0.9), POSE_Q.setFromEuler(POSE_E.set(e * 0.45, -e * 0.35, e * 0.06)), ONE);
+    camera.updateMatrixWorld();
+    const [sx, sy] = LAYERS.mirror.centre;
+    const c = STAR.set(sx * 2 - 1, sy * 2 - 1, CARD_Z).applyMatrix4(POSE).project(camera);
+    const unit = ((st.box.S / 2) * VIEW_DISTANCE) / (VIEW_DISTANCE + e * 0.9);
+    placeBackdrop(size, st.box, ((c.x + 1) / 2) * size.width, ((1 - c.y) / 2) * size.height, unit, e, Math.min(delta, 0.05), reduced, null, false);
+  });
+  return (
+    <>
+      <mesh name="eao-backdrop" material={mat} renderOrder={1000} frustumCulled={false}>
+        <planeGeometry args={[2, 2]} />
+      </mesh>
+      <mesh ref={veilMesh} name="eao-veil" material={veilMat} renderOrder={2000} frustumCulled={false} visible={false}>
+        <planeGeometry args={[2, 2]} />
+      </mesh>
+    </>
+  );
+}
+
 const byX = (a, b) => P[a].x - P[b].x || P[a].y - P[b].y;
 const cross = (o, a, b) => (P[a].x - P[o].x) * (P[b].y - P[o].y) - (P[a].y - P[o].y) * (P[b].x - P[o].x);
 
@@ -143,7 +250,6 @@ export default function Record({ face, out, reduced, active, spread, onHover, on
       label: faceMaterial(label, { transparent: true }),
       spine: faceMaterial(spine),
       card: mirrorMaterial(fill, sdf, LAYERS.mirror), // the cover's star yellow + the infinity mirror
-      backdrop: backdropMaterial(), // the one big star behind the record
     }),
     [back, label, spine, fill, sdf],
   );
@@ -156,26 +262,25 @@ export default function Record({ face, out, reduced, active, spread, onHover, on
     },
     [mats, vinyl],
   );
+  useLayoutEffect(() => {
+    recordDrives = true; // the backdrop follows the record from here
+    return () => {
+      recordDrives = false;
+    };
+  }, []);
 
   const tilt = useRef();
   const flip = useRef();
   const disc = useRef();
   const spin = useRef();
-  const s = useRef({ rx: 0, ry: 0, out: 0, cam: 0, w: 0, h: 0, box: null, beat: 0 });
+  const s = useRef({ rx: 0, ry: 0, out: 0, cam: 0, w: 0, h: 0, box: null });
   useFrame(({ pointer, camera, size }, delta) => {
     const dt = Math.min(delta, 0.05); // back from a hidden tab: no snap, no jump in the vinyl's spin
     const st = s.current;
-    // The page is the canvas: the sleeve at rest fills the rest box (recordBox), from the same distance as ever,
-    // so the layers' depth compensation and the heroes' registration hold. Only the frustum changes: the field of
-    // view scales the sleeve to the box and the view offset centres it there.
     if (size.width !== st.w || size.height !== st.h) {
       st.w = size.width;
       st.h = size.height;
-      st.box = recordBox(size.width, size.height);
-      const { S, x, y } = st.box;
-      camera.fov = (2 * Math.atan((HALF_FOV_TAN * size.height) / S) * 180) / Math.PI;
-      camera.setViewOffset(size.width, size.height, size.width / 2 - x, size.height / 2 - y, size.width, size.height);
-      camera.updateProjectionMatrix();
+      st.box = frameCamera(camera, size);
     }
     const rate = reduced ? 1e9 : 6;
     const k = reduced ? 1 : dt;
@@ -202,8 +307,7 @@ export default function Record({ face, out, reduced, active, spread, onHover, on
     TURN.shownOut = st.out;
     // The opening: the record arrives a little tilted and further back and settles in as the layers
     // spread to their depths (head-on the spread alone is invisible: the layers are scale-compensated).
-    const o = 1 - spread.current;
-    const e = o * o * (3 - 2 * o); // smoothstep: eases into place
+    const e = ease(spread.current);
     tilt.current.rotation.set(st.rx + e * 0.45, st.ry - e * 0.35, e * 0.06);
     tilt.current.position.z = -e * 0.9;
     flip.current.quaternion.copy(TURN.q);
@@ -218,7 +322,6 @@ export default function Record({ face, out, reduced, active, spread, onHover, on
     const tint = TINTS[active];
     if (tint) MIRROR.tint.value.set(tint);
     MIRROR.tintMix.value = approach(MIRROR.tintMix.value, tint ? 1 : 0, k, rate);
-    if (!reduced) MIRROR.shimmer.value = (MIRROR.shimmer.value + dt * 1.6) % (Math.PI * 2); // the lights' shimmer runs
     // With the vinyl out, centre sleeve + disc, towards the side the disc comes out of (the sleeve's x axis faces
     // the other way on the back), and pull back only as far as the page needs to fit them.
     const q = TURN.q;
@@ -233,24 +336,10 @@ export default function Record({ face, out, reduced, active, spread, onHover, on
     // The backdrop star sits on the record's star centre, at the record's scale (opening: pushed back, larger).
     const [sx, sy] = LAYERS.mirror.centre;
     const c = STAR.set(sx * 2 - 1, sy * 2 - 1, CARD_Z).applyMatrix4(m).project(camera);
-    BACKDROP.centre.value.set(((c.x + 1) / 2) * size.width, ((1 - c.y) / 2) * size.height);
-    BACKDROP.unit.value = ((st.box.S / 2) * VIEW_DISTANCE) / (VIEW_DISTANCE + st.out * pull + e * 0.9);
-    // Settled, the whole star stays on the page (user, 10 Nov: the top tip ran off): tip to lower tips (0.809 of
-    // the radius down) fits between margins at the top and bottom, and the star moves down off the record's star
-    // only as far as that needs. Its lower tips fall either side of the navigation's buttons.
-    const gap = 1.5 * st.box.rem;
-    const r = Math.min(BACKDROP.unit.value * BIG, (size.height - 2 * gap) / 1.809);
-    BACKDROP.unit.value = r / BIG;
-    BACKDROP.centre.value.y = MathUtils.clamp(BACKDROP.centre.value.y, gap + r, size.height - gap - 0.809 * r);
-    BACKDROP.view.value.set(size.width, size.height);
-    BACKDROP.rush.value = e;
-    // Its life: time, the beat (the song's, or a slow breath on the silent tempo), the disc for the sound rings.
+    const unit = ((st.box.S / 2) * VIEW_DISTANCE) / (VIEW_DISTANCE + st.out * pull + e * 0.9);
     const clock = AUDIO.playing ? AUDIO.clock?.() : null;
-    st.beat = clock ? clock.beat % 64 : (st.beat + (dt * BPM) / 60) % 64;
-    if (!reduced) BACKDROP.time.value = (BACKDROP.time.value + dt) % 1000;
-    BACKDROP.pulse.value = reduced ? 0 : clock ? Math.exp(-(st.beat % 1) * 5) : 0.25 - 0.25 * Math.cos((st.beat / 4) * Math.PI * 2);
-    BACKDROP.beat.value = st.beat;
-    BACKDROP.rings.value = approach(BACKDROP.rings.value, clock && out && !reduced ? 1 : 0, dt, 2);
+    placeBackdrop(size, st.box, ((c.x + 1) / 2) * size.width, ((1 - c.y) / 2) * size.height, unit, e, dt, reduced, clock, clock && out && !reduced);
+    // the disc, for the sound rings
     const dc = STAR.set(st.out * TRAVEL, 0, 0).applyMatrix4(m).project(camera);
     BACKDROP.disc.value.set(((dc.x + 1) / 2) * size.width, ((1 - dc.y) / 2) * size.height);
     if (TURN.hull) {
@@ -283,11 +372,6 @@ export default function Record({ face, out, reduced, active, spread, onHover, on
 
   return (
     <>
-      {/* The page behind the record: over the whole canvas, behind everything (depth), drawn after the opaque
-          record and before the transparent layers, so the pixels the record hides are never shaded. */}
-      <mesh name="eao-backdrop" material={mats.backdrop} renderOrder={1000} frustumCulled={false}>
-        <planeGeometry args={[2, 2]} />
-      </mesh>
     <group ref={tilt}>
       <group ref={flip}>
         <Diorama
