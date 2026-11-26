@@ -228,9 +228,16 @@
 }
 
 .yhl-track-row.is-selected {
-  background: rgba(255, 255, 255, 0.13);
-  border-color: var(--track-color, #ff2a85);
-  box-shadow: inset 3px 0 0 var(--track-color, #ff2a85);
+  background: var(--track-color, #ff2a85);
+  border-color: #ffffff;
+  color: #050811;
+  font-weight: 800;
+}
+
+.yhl-track-row.is-selected .yhl-row-num,
+.yhl-track-row.is-selected .yhl-row-feat,
+.yhl-track-row.is-selected .yhl-row-dur {
+  color: #050811;
 }
 
 .yhl-row-num {

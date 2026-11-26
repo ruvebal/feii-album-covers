@@ -1,13 +1,4 @@
 // covers/badbunny/src/Route.jsx — Student-authored endpoint for /covers/badbunny (D26).
-//
-// Multi-Album Bad Bunny 180° Turntable, Retro Listening Studio & 3D Worlds Experience:
-//   1. Starts facing the empty Turntable inside the Retro Vinyl Listening Studio (`activeAlbumId === null`)
-//      with the 4 Bad Bunny vinyls fanned out in the foreground like a deck of cards.
-//   2. While no record is on the turntable, rotating 180° to any scenario and playing music are disabled.
-//   3. Clicking a vinyl in the fan hides the remaining vinyls and triggers a 3D animation that places
-//      the chosen vinyl onto the turntable platter.
-//   4. Once seated, the user can lower the needle to hear the songs, rotate 180° to explore that
-//      album's full Blender 3D scenario, or bring back the remaining unselected vinyls.
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';

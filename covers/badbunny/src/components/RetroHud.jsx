@@ -1,10 +1,4 @@
-// covers/badbunny/src/components/RetroHud.jsx — Clean Floating Dock & Tracklist Drawer HUD.
-//
-// UX Improvements per user feedback:
-//   - Removed all album metadata / descriptive text blocks from the upper HUD panel.
-//   - Moved interactive action buttons out of the upper box into a sleek, centered
-//     bottom floating dock (`.yhl-dock`) for intuitive thumb/cursor reach.
-//   - Refined the tracklist panel into a clean, collapsible song drawer.
+// covers/badbunny/src/components/RetroHud.jsx — Floating dock and collapsible tracklist drawer.
 
 import { useState } from 'react';
 

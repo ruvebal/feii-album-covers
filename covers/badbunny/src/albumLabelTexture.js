@@ -1,9 +1,3 @@
-// covers/badbunny/src/albumLabelTexture.js — Route-relative album cover texture loader
-// for the 4 Bad Bunny vinyl sleeves and turntable center labels.
-//
-// Uses `new URL('../public/...', import.meta.url).href` (Route contract 2) and tags every
-// texture with `SRGBColorSpace` for accurate color reproduction in Three.js.
-
 import { useTexture } from '@react-three/drei';
 import { SRGBColorSpace } from 'three';
 
@@ -29,18 +23,11 @@ function tagSrgb(texture) {
   }
 }
 
-/**
- * Loads the official downloaded cover image for any of the 4 Bad Bunny albums
- * (`yhlqmdlg`, `dtmf`, `uvst`, `eutdm`) from `covers/yhlqmdlg/public/`.
- */
 export function useAlbumCoverTexture(albumId) {
   const url = ALBUM_COVER_URLS[albumId] || ALBUM_COVER_URLS.yhlqmdlg;
   return useTexture(url, tagSrgb);
 }
 
-/**
- * Loads a studio wall frame texture (`banderaPr` or `badBunny`) from `covers/badbunny/public/`.
- */
 export function useStudioFrameTexture(frameKey) {
   const url = STUDIO_FRAME_URLS[frameKey] || STUDIO_FRAME_URLS.banderaPr;
   return useTexture(url, tagSrgb);

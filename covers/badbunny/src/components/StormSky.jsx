@@ -1,8 +1,4 @@
-// covers/badbunny/src/components/StormSky.jsx — Electric Blue Storm Sky Dome & Clouds.
-//
-// Recreates the iconic stormy blue sky behind the YHLQMDLG street cover, with:
-//   - Deep electric-blue storm dome and turbulent cloud banks
-//   - Ambient storm lighting without moving lightning bolt cylinders
+// covers/badbunny/src/components/StormSky.jsx — Storm sky dome and cloud clusters for YHLQMDLG.
 
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
