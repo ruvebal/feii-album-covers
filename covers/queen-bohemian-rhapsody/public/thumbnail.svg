@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Silueta de un maniquí con el puño alzado sobre un escenario, ante un estadio al atardecer">
+  <!-- Original artwork made for this route (gontugithub, 2026). Not the official sleeve. -->
+  <defs>
+    <linearGradient id="qbr-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a1650"/>
+      <stop offset="0.45" stop-color="#b4386e"/>
+      <stop offset="0.75" stop-color="#ff8a2a"/>
+      <stop offset="1" stop-color="#ffd27a"/>
+    </linearGradient>
+    <radialGradient id="qbr-sun" cx="0.5" cy="0.7" r="0.35">
+      <stop offset="0" stop-color="#fff4d6"/>
+      <stop offset="0.2" stop-color="#ffd68c" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#ff8c3c" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="120" height="120" fill="url(#qbr-sky)"/>
+  <rect width="120" height="120" fill="url(#qbr-sun)"/>
+  <path d="M0 120V82h8v2h8v2h8v2h8v2h8v1h8v1h24v-1h8v-1h8v-2h8v-2h8v-2h8v-2h8v38z" fill="#1a0d1f"/>
+  <rect x="20" y="104" width="80" height="16" fill="#120914"/>
+  <g fill="none" stroke="#0b0610" stroke-linecap="round">
+    <path d="M60 64v20" stroke-width="8"/>
+    <path d="M57 65l-10-20M63 65l7 13M58 84l-4 20M62 84l5 20" stroke-width="3.6"/>
+    <path d="M71 79l-4-12" stroke-width="1.2"/>
+  </g>
+  <circle cx="60" cy="57" r="4.6" fill="#0b0610"/>
+  <rect x="3" y="3" width="114" height="114" fill="none" stroke="#fff4e6" stroke-opacity="0.6" stroke-width="1.5"/>
+</svg>

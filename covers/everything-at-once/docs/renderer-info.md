@@ -1,0 +1,71 @@
+# renderer.info — cover
+
+<!-- Template (Unit 8). Replace every ellipsis. Numbers come from the gallery
+     panel on YOUR route, read on YOUR machine. The beacon's 6 / 1368 belong to
+     the beacon; do not copy them here. Change the tree → change this table and
+     CEILING in src/budget.js in the same PR. -->
+
+Album: Texas Red — Everything at Once (2025).
+Scene (V2, the record): Karu's cover as six layered planes (star + five member sides, KTX2 ETC1S 2048 px), the sleeve's back face (UASTC, task3) and three spine edges, the vinyl and its label on both faces (7 Nov: the rear face and rear label, so the disc never disappears on a turn). Unlit TSL node materials (riso shift, in-material focus blur), no lights, shadows off, no post-processing pass, DPR [1, 1.5], stepped down 1.5 → 1.25 → 1 while the frame rate stays under 55 FPS. Renderer: `WebGPURenderer` through R3F's async `gl` factory; where WebGPU is missing it runs its WebGL 2 backend (as in every headless reading below).
+Unit cap, any scene: desktop ≤ 200 calls, mobile ≤ 80.
+Accepted ceiling for this tree: calls ≤ 38, triangles ≤ 25,000, geometries ≤ 38, textures ≤ 23 (`src/budget.js`). Calls and triangles are the heaviest single frame (Javi selected; Guille's triangles); geometries and textures are what is resident after every hero has been shown once, since a hero stays on the GPU so returning to it is instant. Mobile is well inside the cap.
+
+Renderer: `WebGPURenderer` with `forceWebGL: true` (7 Nov), so every browser renders through its WebGL 2 backend, as the course asks, while the materials stay in TSL (compiled to GLSL on that backend). `?debug=fps` names the backend and GPU.
+
+How calls are measured: on `WebGPURenderer`, `info.render.calls` counts render() invocations over the renderer's lifetime, so the shared Unit 8 probe would report an ever-growing number. `src/RouteBudgetProbe.jsx` reports the same sample shape with `calls` = the draw calls of one whole frame (auto-reset off, one reset per R3F frame, read before the next render). One of the calls is the renderer's own output pass (colour-space conversion: 1 call, 1 triangle).
+
+Pins: three@0.185.1, @react-three/fiber@9.8.2, @react-three/drei@10.7.9, react@19.3.1 (this repo's package.json).
+
+| Run | Machine, date | Shadows | calls | triangles | geometries | textures | Accepted |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| V1 baked scene, idle (retired 6 Nov) | Headless Chromium 155 + SwiftShader (software WebGL), i7-10750H, 5 Nov 2026 | off | 144 | 209,586 | 129 | 0 | superseded |
+| V1 baked scene, hovering Guille's side (retired) | same | off | 143 | 209,014 | 129 | 0 | superseded |
+| V2 record, rest | Headless Chromium 155.0.8059.84, WebGPURenderer on its WebGL 2 backend + SwiftShader, i7-10750H, 6 Nov 2026 | off | 14 | 183 | 14 | 11 | yes |
+| V2 record, Javi active (others blurred) | same | off | 14 | 183 | 14 | 11 | yes |
+| V2 record, back face | same | off | 14 | 183 | 14 | 11 | yes |
+| V2 record, vinyl out | same | off | 14 | 183 | 14 | 11 | superseded |
+| Record with the disc's rear face, rest | Headless Chromium 155.0.8059.84, WebGL 2 backend on ANGLE/Vulkan, RTX 2060 Mobile, 7 Nov 2026 | off | 16 | 343 | 16 | 12 | yes |
+| same, Lucy selected (her ghost drawn) | same | off | 17 | 345 | 17 | 12 | yes |
+| same, Lucy selected, vinyl out | same | off | 17 | 345 | 17 | 12 | yes |
+| same, back face, vinyl out | same | off | 16 | 343 | 17 | 12 | yes |
+| Record with Andrés's metronome and Pavlo's cigarettes loaded, rest | Headless Chromium 155.0.8059.84, WebGL 2 backend on ANGLE/Vulkan, RTX 2060 Mobile, 8 Nov 2026 | off | 16 | 343 | 16 | 14 | yes |
+| same, Andrés selected (ghost, plate, metronome body + pendulum) | same | off | 21 | 4,793 | 19 | 15 | yes |
+| same, Pavlo selected (ghost, plate, 3 cigarettes, instanced smoke and ember glows) | same | off | 25 | 1,527 | 21 | 15 | yes |
+| same, Lucy's sunglasses loaded too, rest | same | off | 16 | 343 | 16 | 15 | yes |
+| same, Lucy selected (ghost, plate, frame, lenses, two arms) | same | off | 25 | 11,589 | 21 | 16 | yes |
+| same, Guille's guitar loaded too, rest | same | off | 16 | 343 | 16 | 16 | yes |
+| same, Guille selected (ghost, plate, guitar in two passes, 6 instanced strings) | same | off | 20 | 24,659 | 19 | 17 | yes |
+| same, Javi's controller loaded too, rest | same | off | 16 | 343 | 16 | 17 | yes |
+| same, Javi selected (ghost, plate, controller body + 9 pressable parts in two passes) | same | off | 33 | 14,733 | 27 | 18 | yes |
+| cover + style treatment (task2): the star infinity mirror (card material; + `star-sdf.ktx2`, RG8 512², 524,288 GPU bytes, 60 KB file), all heroes loaded, rest | same | off | 16 | 343 | 16 | 18 | yes |
+| same, mirror, Javi selected | same | off | 33 | 14,733 | 27 | 19 | yes |
+| full-page canvas (10 Nov): the record framed in the viewport, + the backdrop quad (one straight star, glints, halftone and grain, dust, sound rings; no texture), rest, 1440×813 | same | off | 17 | 345 | 17 | 18 | yes |
+| same, Javi selected (his controller past the sleeve's edge is no longer culled by a square canvas) | same | off | 38 | 15,071 | 28 | 19 | yes |
+| same, Lucy / Pavlo / Andrés / Guille selected | same | off | 26 / 26 / 22 / 21 | 11,591 / 1,529 / 4,795 / 24,661 | 22 / 22 / 20 / 20 | 19 | yes |
+| same, all five heroes shown one after another (Javi, Lucy, Pavlo, Andrés, Guille), then none | Headless Chromium 155.0.8059.84, WebGL 2 backend on ANGLE/Vulkan, RTX 2060 Mobile, 10 Nov 2026 | off | 17 (none) / 38 (Javi) | 345 / 24,661 (Guille) | 28 → 33 → 38 → 41 → 44, stays 44 | 19 → 23, stays 23 | superseded (11 Nov) |
+| cover + KTX2 textures (task3): the back face as UASTC (`back-uastc.ktx2`, was ETC1S), rest, 1440×900 | same | off | 17 | 345 | 17 | 18 | yes |
+| frame-rate pass (11 Nov): each layer's quad only over its art, shared with its ghost (a lifted side on a wider box of its own); rest, 1440×900 | Headless Chromium 155.0.8059.84, WebGL 2 backend on ANGLE/Vulkan, RTX 2060 Mobile, 11 Nov 2026 | off | 17 | 345 | 11 | 18 | yes |
+| same, all five heroes shown one after another, then none | same | off | 17 (none) / 38 (Javi) | 345 / 24,661 (Guille) | 22 → 27 → 32 → 35 → 38, stays 38 | 19 → 23, stays 23 | yes |
+
+**Frame-rate pass (11 Nov), on the everyday Intel UHD.** The full page had brought the Intel GPU to 56 ms per frame at rest (1440×900, DPR 1.5; 26.6 FPS once the DPR guard dropped to 1). Each frame's GPU time was measured by group (timed renders with one group hidden, median of three), and only changes that keep the picture were made:
+- the backdrop draws after the opaque record at the far end of the depth range, so the pixels the record covers skip its shader; its sound rings and each glint's arms are skipped while they are multiplied by 0;
+- the mirror's eight-echo loop is skipped at rest (its amount lands exactly on 0); a layer reads one texel instead of three (or six with its plate) while the riso shift and the plate are at 0; the heroes likewise; the torn edge computes its fine fibres only where they can show;
+- each layer's quad spans only its art (`layers.json` `box`, padded for the riso shift), not the whole sleeve; a lifted side, whose torn edge and shadow sample mips 3–4, draws on a box padded 0.1 uv (the shadow's footprint down to a ~256 px sleeve);
+- the DPR guard steps 1.5 → 1.25 → 1 while the frame rate stays under 55 FPS (down only); drei's default band on a 60 Hz screen was 40–60, so a page at 45 FPS never stepped down.
+Frozen-time screenshots (reduced motion, five states) against the committed build: back face identical but for 24 pixels at 1/255; the other states differ by at most 16/255 on fewer than 10 pixels, along the diagonal seam of the smaller quads (mip levels are chosen per 2×2 pixel block). Average FPS over 30 s per state, headless, 1440×813:
+
+| State | Intel UHD before, DPR 1 | Intel UHD after, DPR 1 | Intel GPU time per frame after, DPR 1 |
+| --- | --- | --- | --- |
+| rest | 26.6 | 74.5 | 14.2 ms |
+| Javi selected | – | 56.2 | 17.3 ms |
+| Guille selected | – | 56.8 | 19.6 ms |
+| Pavlo, vinyl out, playing | – | 55.7 | 15.2 ms |
+| back face | – | 66.3 | 13.3 ms |
+
+The backdrop is still the largest share (about 9 ms of a member frame at DPR 1 on Intel). RTX 2060, same states at DPR 1.5: 690 / 580 / 565 / 448 / 656 FPS.
+
+The 6 Nov readings come from software rendering; from 7 Nov the headless checks run on the laptop's GPU. Counts (calls, triangles, geometries) do not depend on the GPU; frame time does. Full page, 10 Nov, headless RTX 2060 at 1440×813: 847 FPS (p95 2.1 ms) at DPR 1, 368 FPS (p95 5.8 ms) at DPR 1.5; drei `PerformanceMonitor` drops the DPR to 1 if the frame rate falls. Frame time, `?debug=fps`, idle at 775×775, 7 Nov: RTX 2060 Mobile 133.1 FPS (p95 9.7 ms); Intel UHD (CML GT2) 111.3 FPS (p95 10.4 ms) after the layer blur and tear became uniform branches (11.9 FPS before).
+
+V1 geometry reduction (Blender, `scripts/build_web.py`; that scene is retired, the numbers are kept as history): 2,345,131 → ~300,000 triangles. Ship subdivision 2 → 0, console subdivision 2 → 1, cable curve resolution 12 → 6, Decimate (collapse) on meshes heavier than their share of the frame (the four coins 229,600 → 3,000 each). Lights, the backdrop cube and props outside the cover camera removed. Flat-shaded renders from the cover camera before/after: mean difference 0.5/255; only the bottle edge and the console cable change visibly.
+
+`memory.textures` is a texture **count**, not bytes. With every map null it already reads 1 (three's empty placeholder); the sleeve picture is one more.

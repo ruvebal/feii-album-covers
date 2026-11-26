@@ -1,0 +1,10 @@
+# Route-local ignores; the repo root .gitignore belongs to the instructor.
+# Authoring sources and working files stay in the private project folder.
+*.blend
+*.blend1
+*.log
+public/*-source.*
+captures/
+src/probe/
+public/probe/
+public/audio-placeholder/

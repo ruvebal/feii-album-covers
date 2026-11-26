@@ -1,0 +1,6 @@
+# Authoring sources stay local (.cursor/rules/40-asset-pipeline: never commit authoring sources).
+# How to regenerate them: docs/blender-note.md. The runtime asset is public/stadium.ktx2.glb (task3).
+*.blend
+*.blend1
+*.glb
+textures/

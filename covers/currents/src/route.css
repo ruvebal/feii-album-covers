@@ -1,0 +1,938 @@
+/* Estilo de la portada de Currents: negro, rayas lila, texto amarillo anaranjado ancho y
+   espaciado, y la estela (rojo → rosa → naranja → amarillo) como acento. */
+/* Todo cuelga de .currents (o de html.route-currents, que Route.jsx quita al desmontar): nada se
+   filtra a otras rutas de la galería. La navegación de la galería ocupa el borde inferior
+   (--nav-room) y va por encima (z-index 39 y 40). */
+@font-face {
+	font-family: "Archivo Expanded";
+	src: url("../public/fonts/archivo-expanded-medium.woff2") format("woff2");
+	font-weight: 500;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: "Archivo Expanded";
+	src: url("../public/fonts/archivo-expanded-bold.woff2") format("woff2");
+	font-weight: 700;
+	font-display: swap;
+}
+
+html.route-currents,
+html.route-currents body {
+	height: 100%;
+	overflow: hidden;
+	background: #241433;
+}
+
+.currents {
+	--ink: #07030b;
+	--night: #241433; /* fondo morado oscuro (el mismo que el del lienzo) */
+	--panel: rgb(12 5 18 / 0.86);
+	--line: rgb(201 174 242 / 0.18);
+	--lilac: #c9aef2;
+	--muted: #a993c8;
+	--text: #e6dcf5;
+	--gold: #f2b544;
+	--trail: linear-gradient(90deg, #e8233a, #ff4d8c 45%, #ff8c1a 80%, #ffd23f);
+	--nav-room: 76px; /* selector de proyectos y anterior/siguiente de la galería */
+
+	position: fixed;
+	inset: 0;
+	background: radial-gradient(circle at 50% 40%, #33204a 0%, var(--night) 70%);
+	color: var(--text);
+	font-family: "Archivo Expanded", system-ui, sans-serif;
+	font-weight: 500;
+	line-height: normal;
+	overflow: hidden;
+
+	/* en estrecho la navegación de la galería se apila en tres filas */
+	@media (max-width: 640px) {
+		--nav-room: 150px;
+	}
+
+	* {
+		margin: 0;
+		box-sizing: border-box;
+	}
+
+	#scene {
+		display: block;
+		width: 100%;
+		height: 100%;
+		touch-action: none;
+	}
+
+	.visually-hidden {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+
+	/* Barra superior */
+	.hud {
+		position: fixed;
+		top: 20px;
+		left: 24px;
+		right: 24px;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 12px;
+		pointer-events: none;
+	}
+
+	.brand {
+		font-size: 0.8rem;
+		font-weight: 700;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: var(--gold);
+	}
+
+	button {
+		font: inherit;
+		color: inherit;
+		cursor: pointer;
+	}
+
+	button:focus-visible,
+	input:focus-visible {
+		outline: 2px solid var(--gold);
+		outline-offset: 2px;
+	}
+
+	/* Reproductor */
+	.player {
+		position: fixed;
+		top: 80px;
+		right: 24px;
+		width: min(360px, calc(100% - 48px));
+		max-height: calc(100% - 170px - var(--nav-room));
+		display: flex;
+		flex-direction: column;
+		background: var(--panel);
+		border: 1px solid var(--line);
+		backdrop-filter: blur(12px);
+	}
+
+	.player[hidden] {
+		display: none;
+	}
+
+	.stripes {
+		flex: none;
+		height: 10px;
+		background: repeating-linear-gradient(135deg, var(--lilac) 0 2px, transparent 2px 6px);
+		opacity: 0.55;
+	}
+
+	.player-body {
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+		padding: 18px 18px 14px;
+		min-height: 0;
+	}
+
+	.player-head {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.player-head h2 {
+		flex: 1;
+		white-space: nowrap;
+	}
+
+	#album-total {
+		white-space: nowrap;
+	}
+
+	.head-button {
+		flex: none;
+		width: 32px;
+		height: 32px;
+		margin: -8px -6px -8px 0;
+		display: grid;
+		place-items: center;
+		background: transparent;
+		border: 0;
+		color: var(--muted);
+	}
+
+	.head-button:hover {
+		color: var(--gold);
+	}
+
+	.head-button svg {
+		width: 14px;
+		height: 14px;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.6;
+	}
+
+	.head-button .icon-max,
+	.player.minimized .head-button .icon-min {
+		display: none;
+	}
+
+	.player.minimized .head-button .icon-max {
+		display: block;
+	}
+
+	/* Recogido con la X: el nombre del álbum, el botón de maximizar y las rayas del visualizador */
+	.player.collapsed {
+		width: auto;
+	}
+
+	.player.collapsed .stripes,
+	.player.collapsed .player-body > :not(.player-head, #viz),
+	.player.collapsed #album-total,
+	.player.collapsed #player-close {
+		display: none;
+	}
+
+	.player.collapsed .player-body {
+		padding: 12px 18px 14px;
+	}
+
+	.player.collapsed .head-button .icon-min {
+		display: none;
+	}
+
+	.player.collapsed .head-button .icon-max {
+		display: block;
+	}
+
+	/* Minimizado: solo el tema, sus controles y el progreso */
+	.player.minimized #viz,
+	.player.minimized .volume,
+	.player.minimized .tracks,
+	.player.minimized .note,
+	.player.minimized #album-total {
+		display: none;
+	}
+
+	.player h2 {
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: var(--gold);
+	}
+
+	.player-head span,
+	.times,
+	.note {
+		font-size: 0.62rem;
+		letter-spacing: 0.08em;
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.now {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+
+	/* El botón de play es la bola cromada */
+	.chrome {
+		flex: none;
+		width: 52px;
+		height: 52px;
+		border-radius: 50%;
+		border: 0;
+		display: grid;
+		place-items: center;
+		background: radial-gradient(circle at 35% 30%, #fff 0%, #c9c9d2 18%, #6d6a78 55%, #1b1922 100%);
+		box-shadow: 0 0 0 1px rgb(255 255 255 / 0.15), 0 6px 18px rgb(0 0 0 / 0.5);
+		transition: transform 0.15s;
+	}
+
+	.chrome:hover {
+		transform: scale(1.05);
+	}
+
+	.chrome svg,
+	.step svg {
+		width: 16px;
+		height: 16px;
+	}
+
+	.chrome svg {
+		fill: var(--ink);
+	}
+
+	.chrome .icon-pause,
+	.player.playing .chrome .icon-play {
+		display: none;
+	}
+
+	.player.playing .chrome .icon-pause {
+		display: block;
+	}
+
+	.now-text {
+		flex: 1;
+		min-width: 0;
+	}
+
+	#now-label {
+		font-size: 0.6rem;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: var(--muted);
+	}
+
+	#now-title {
+		margin-top: 4px;
+		font-size: 0.85rem;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.step {
+		flex: none;
+		width: 44px;
+		height: 44px;
+		display: grid;
+		place-items: center;
+		background: transparent;
+		border: 0;
+	}
+
+	.step svg {
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 1.6;
+	}
+
+	.step:hover {
+		color: var(--gold);
+	}
+
+	#viz {
+		display: block;
+		width: 100%;
+		height: 64px;
+		background: var(--ink);
+	}
+
+	/* Barras de progreso y volumen con los colores de la estela */
+	.rail {
+		--progress: 0%;
+		width: 100%;
+		height: 16px;
+		margin: 0;
+		appearance: none;
+		background: transparent;
+		cursor: pointer;
+	}
+
+	.rail::-webkit-slider-runnable-track {
+		height: 4px;
+		background: var(--trail) 0 0 / var(--progress) 100% no-repeat, var(--line);
+	}
+
+	.rail::-moz-range-track {
+		height: 4px;
+		background: var(--trail) 0 0 / var(--progress) 100% no-repeat, var(--line);
+	}
+
+	.rail::-webkit-slider-thumb {
+		appearance: none;
+		width: 12px;
+		height: 12px;
+		margin-top: -4px;
+		border-radius: 50%;
+		background: #ffd23f;
+		border: 0;
+	}
+
+	.rail::-moz-range-thumb {
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		background: #ffd23f;
+		border: 0;
+	}
+
+	.volume {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		margin-top: -6px;
+	}
+
+	.volume .step {
+		width: 36px;
+		height: 36px;
+	}
+
+	.volume .step[aria-pressed="true"] .waves {
+		display: none;
+	}
+
+	.volume .step[aria-pressed="true"] {
+		color: var(--muted);
+	}
+
+	.times {
+		display: flex;
+		justify-content: space-between;
+		margin-top: 4px;
+	}
+
+	.tracks {
+		list-style: none;
+		padding: 0;
+		border-top: 1px solid rgb(201 174 242 / 0.14);
+		overflow-y: auto;
+		min-height: 0;
+		scrollbar-gutter: stable;
+	}
+
+	/* Barra de scroll (tracklist y ficha): una raya lila fina sobre negro, como las de la portada;
+	dorada al usarla */
+	.tracks::-webkit-scrollbar,
+	.sheet-content::-webkit-scrollbar {
+		width: 6px;
+	}
+
+	.tracks::-webkit-scrollbar-track,
+	.sheet-content::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	.tracks::-webkit-scrollbar-thumb,
+	.sheet-content::-webkit-scrollbar-thumb {
+		background: rgb(201 174 242 / 0.45);
+		border-radius: 3px;
+	}
+
+	.tracks::-webkit-scrollbar-thumb:hover,
+	.tracks::-webkit-scrollbar-thumb:active,
+	.sheet-content::-webkit-scrollbar-thumb:hover,
+	.sheet-content::-webkit-scrollbar-thumb:active {
+		background: var(--gold);
+	}
+
+	.tracks::-webkit-scrollbar-button,
+	.sheet-content::-webkit-scrollbar-button {
+		display: none;
+	}
+
+	@supports not selector(::-webkit-scrollbar) {
+		.tracks,
+		.sheet-content {
+			scrollbar-width: thin;
+			scrollbar-color: rgb(201 174 242 / 0.45) transparent;
+		}
+	}
+
+	.tracks button {
+		width: 100%;
+		display: grid;
+		grid-template-columns: 28px 1fr auto;
+		align-items: baseline;
+		gap: 8px;
+		padding: 9px 4px;
+		min-height: 36px;
+		text-align: left;
+		background: transparent;
+		border: 0;
+		border-bottom: 1px solid rgb(201 174 242 / 0.08);
+		font-size: 0.68rem;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+
+	.tracks .n,
+	.tracks time {
+		font-size: 0.62rem;
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.tracks button:hover {
+		background: rgb(201 174 242 / 0.08);
+	}
+
+	.tracks button[aria-current="true"] {
+		background: rgb(242 181 68 / 0.12);
+		color: var(--gold);
+		font-weight: 700;
+	}
+
+	.note:empty {
+		display: none;
+	}
+
+	/* Botón de ayuda: pastilla abajo a la derecha, con el ? en un círculo dorado */
+	/* Botón de ayuda: un panel pequeño como la ficha y el reproductor (fondo, filete lila, desenfoque y
+	rayas diagonales), con el texto dorado de sus títulos y el "?" como una tecla */
+	.help-button {
+		position: fixed;
+		right: 24px;
+		bottom: calc(24px + var(--nav-room));
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-height: 44px;
+		padding: 0 16px 0 0;
+		border: 1px solid var(--line);
+		background: var(--panel);
+		backdrop-filter: blur(12px);
+		color: var(--gold);
+		font: inherit;
+		font-size: 0.66rem;
+		font-weight: 700;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		cursor: pointer;
+		transition: border-color 0.2s, color 0.2s;
+	}
+
+	.help-button::before {
+		content: "";
+		align-self: stretch;
+		width: 10px;
+		background: repeating-linear-gradient(135deg, var(--lilac) 0 2px, transparent 2px 6px);
+		opacity: 0.55;
+		transition: opacity 0.2s;
+	}
+
+	.help-mark {
+		display: grid;
+		place-items: center;
+		min-width: 22px;
+		height: 22px;
+		border: 1px solid var(--line);
+		color: var(--lilac);
+		font-size: 0.7rem;
+		letter-spacing: 0;
+		transition: border-color 0.2s, color 0.2s;
+	}
+
+	.help-button:hover,
+	.help-button:focus-visible {
+		border-color: rgb(242 181 68 / 0.5);
+	}
+
+	.help-button:hover::before,
+	.help-button:focus-visible::before {
+		opacity: 0.9;
+	}
+
+	.help-button:hover .help-mark,
+	.help-button:focus-visible .help-mark {
+		border-color: var(--gold);
+		color: var(--gold);
+	}
+
+	/* Ayuda (popover nativo): un panel como la ficha y el reproductor, sobre el botón. Dos bloques
+	(ratón o dedo · teclado) en filas alineadas: acción a la izquierda, efecto a la derecha.
+	Se cierra con su X, con Esc o al pulsar fuera */
+	.help {
+		inset: auto 24px calc(80px + var(--nav-room)) auto;
+		margin: 0;
+		width: min(720px, calc(100% - 32px));
+		max-height: calc(100% - 120px - var(--nav-room));
+		overflow-y: auto;
+		padding: 0;
+		background: var(--panel);
+		color: var(--text);
+		border: 1px solid var(--line);
+		backdrop-filter: blur(12px);
+		font-size: 0.66rem;
+		letter-spacing: 0.04em;
+	}
+
+	.help:popover-open {
+		display: grid;
+		grid-template-columns: 1.15fr 1fr;
+		gap: 18px 28px;
+		padding-bottom: 18px;
+	}
+
+	/* rayas lila arriba, como en los paneles */
+	.help::before {
+		content: "";
+		grid-column: 1 / -1;
+		height: 10px;
+		margin-bottom: -6px;
+		background: repeating-linear-gradient(135deg, var(--lilac) 0 2px, transparent 2px 6px);
+		opacity: 0.55;
+	}
+
+	.help::backdrop {
+		background: rgb(7 3 11 / 0.35);
+	}
+
+	.help-head {
+		grid-column: 1 / -1;
+		padding: 0 20px;
+		display: flex;
+		align-items: center;
+	}
+
+	.help h2 {
+		flex: 1;
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: var(--gold);
+	}
+
+	.help-group {
+		padding: 0 20px;
+	}
+
+	.help-group + .help-group {
+		padding-left: 0;
+	}
+
+	.help h3 {
+		padding-bottom: 8px;
+		border-bottom: 1px solid var(--line);
+		font-size: 0.58rem;
+		font-weight: 700;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--muted);
+	}
+
+	.help-list {
+		display: grid;
+		grid-template-columns: max-content 1fr;
+		gap: 10px 14px;
+		margin-top: 12px;
+		padding: 0;
+		list-style: none;
+	}
+
+	.help-list li {
+		display: contents;
+	}
+
+	.help-act {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		min-height: 20px;
+		font-weight: 700;
+		text-transform: uppercase;
+		color: var(--lilac);
+	}
+
+	.help-list li > span:last-child {
+		align-self: center;
+		line-height: 1.5;
+		color: var(--muted);
+	}
+
+	.help kbd {
+		min-width: 20px;
+		padding: 2px 6px;
+		border: 1px solid var(--line);
+		border-bottom-width: 2px;
+		font: inherit;
+		font-weight: 700;
+		text-align: center;
+		text-transform: none;
+		color: var(--text);
+	}
+
+	.help-note {
+		grid-column: 1 / -1;
+		margin: 0 20px;
+		padding-top: 12px;
+		border-top: 1px solid var(--line);
+		color: var(--muted);
+	}
+
+	/* estrecho: un bloque debajo del otro */
+	@media (max-width: 640px) {
+		.help:popover-open {
+			grid-template-columns: 1fr;
+			inset: auto 16px calc(80px + var(--nav-room)) 16px;
+		}
+
+		.help-group + .help-group {
+			padding-left: 20px;
+		}
+	}
+
+	/* Ficha del álbum: a la izquierda, como el reproductor a la derecha */
+	.sheet {
+		position: fixed;
+		top: 80px;
+		left: 24px;
+		width: min(280px, calc(100% - 48px));
+		max-height: calc(100% - 170px - var(--nav-room));
+		display: flex;
+		flex-direction: column;
+		background: var(--panel);
+		border: 1px solid var(--line);
+		backdrop-filter: blur(12px);
+	}
+
+	.sheet-body {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		padding: 18px 18px 16px;
+		min-height: 0;
+	}
+
+	.sheet h2 {
+		flex: 1;
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: var(--gold);
+	}
+
+	.sheet-content {
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
+		overflow-y: auto;
+	}
+
+	.facts {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		padding: 0;
+		list-style: none;
+	}
+
+	.facts li {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	.facts strong {
+		font-size: 0.95rem;
+		font-weight: 700;
+		color: var(--text);
+	}
+
+	.facts span {
+		font-size: 0.66rem;
+		letter-spacing: 0.04em;
+		color: var(--muted);
+	}
+
+	.sheet-section h3 {
+		font-size: 0.58rem;
+		font-weight: 700;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--muted);
+	}
+
+	.sheet-section {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		padding-top: 14px;
+		border-top: 1px solid var(--line);
+		font-size: 0.66rem;
+		line-height: 1.55;
+		color: var(--text);
+	}
+
+	.sheet-track {
+		font-size: 0.8rem;
+		font-weight: 700;
+		color: var(--gold);
+	}
+
+	.sheet-meta {
+		font-size: 0.6rem;
+		letter-spacing: 0.06em;
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.sheet-meta:empty {
+		display: none;
+	}
+
+	.sheet .head-button .icon-max,
+	.sheet.collapsed .head-button .icon-min,
+	.sheet.collapsed .stripes,
+	.sheet.collapsed .sheet-content {
+		display: none;
+	}
+
+	.sheet.collapsed .head-button .icon-max {
+		display: block;
+	}
+
+	.sheet.collapsed {
+		width: auto;
+	}
+
+	.sheet.collapsed .sheet-body {
+		padding: 12px 18px;
+	}
+
+	/* Solo cuando hay sitio a los lados de la portada */
+	@media (max-width: 1099px) {
+		.sheet {
+			display: none;
+		}
+	}
+
+	/* Móvil: el reproductor es una hoja inferior y la marca se esconde para dejar sitio */
+	@media (max-width: 600px) {
+		.hud {
+			top: 12px;
+			left: 12px;
+			right: 12px;
+			justify-content: center;
+		}
+
+		.brand {
+			display: none;
+		}
+
+		.player {
+			top: auto;
+			right: 0;
+			bottom: var(--nav-room);
+			width: 100%;
+			max-height: 60%;
+			border-width: 1px 0 0;
+		}
+
+		.tracks button {
+			font-size: 0.72rem;
+		}
+
+		.player.collapsed {
+			right: 12px;
+			bottom: calc(84px + var(--nav-room));
+			width: auto;
+			border-width: 1px;
+		}
+	}
+
+	/* Pantalla de carga: solo una bola cromada que respira, una línea de progreso y el texto */
+	.loader {
+		position: fixed;
+		inset: 0;
+		z-index: 10;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 28px;
+		padding: 16px;
+		background: var(--night);
+		transition: opacity 1s ease, visibility 0s linear 1s;
+	}
+
+	.loader.done {
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
+	}
+
+	.loader-ball {
+		width: 76px;
+		height: 76px;
+		border-radius: 50%;
+		background: radial-gradient(circle at 34% 28%, #fff 0%, #e5e4ed 14%, #9895a5 36%, #262432 56%, #bcb9c8 74%, #18141f 100%);
+		box-shadow: 0 18px 30px -12px rgb(7 3 11 / 0.55);
+		animation: currents-loader-breathe 3.2s ease-in-out infinite;
+	}
+
+	.loader-bar {
+		width: 140px;
+		height: 2px;
+		border-radius: 1px;
+		background: rgb(201 174 242 / 0.2);
+		overflow: hidden;
+	}
+
+	/* morado de las rayas de la portada: de la sombra violeta al lila con luz */
+	.loader-bar span {
+		display: block;
+		height: 100%;
+		background: linear-gradient(90deg, #7a4fb8, var(--lilac));
+		transform-origin: 0 50%;
+		scale: var(--loaded, 0) 1;
+		transition: scale 0.4s ease;
+	}
+
+	.loader-label {
+		margin-top: -14px;
+		font-size: 0.66rem;
+		letter-spacing: 0.22em;
+		text-transform: uppercase;
+		color: var(--text);
+		text-align: center;
+		max-width: 32ch;
+		line-height: 1.6;
+	}
+
+	.loader.failed .loader-ball {
+		animation: none;
+		opacity: 0.45;
+	}
+
+	.loader.failed .loader-bar {
+		display: none;
+	}
+
+	.loader.failed .loader-label {
+		text-transform: none;
+		letter-spacing: 0.04em;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.loader-ball {
+			animation: none;
+		}
+	}
+	/* Panel opcional (?budget) con renderer.info */
+	.budget {
+		position: fixed;
+		top: 48px;
+		left: 50%;
+		translate: -50% 0;
+		z-index: 11;
+		padding: 8px 12px;
+		background: var(--panel);
+		border: 1px solid var(--line);
+		font: 12px/1.5 ui-monospace, monospace;
+		color: var(--text);
+	}
+}
+
+@keyframes currents-loader-breathe {
+	0%,
+	100% {
+		scale: 1;
+	}
+	50% {
+		scale: 1.06;
+	}
+}
