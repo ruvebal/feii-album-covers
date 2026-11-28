@@ -1,0 +1,6 @@
+Disco 3D: "12" Vinyl Record" por AleixoAlonso (https://sketchfab.com/AleixoAlonso)
+Fuente: https://sketchfab.com/3d-models/12-vinyl-record-dd27284e8c1a4622b3a0433c7cc8ee72
+Licencia: CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/)
+Cambios: se usa la geometria; las texturas de surcos (normal y rugosidad) se redujeron de 4096 a 1024 px y la
+textura de color a 2048 px; las dos etiquetas originales (AC/DC Highway to Hell / Atlantic) se borraron y el
+museo pinta en su lugar la etiqueta de cada album.
