@@ -10,10 +10,10 @@
 
 import { Quaternion, Vector3 } from 'three/webgpu';
 
-export const TAP = 6; // px: less travel than this is a tap
-export const DEG_PER_PX = 0.5; // 180 deg = 360 px: about half the desktop stage, most of a phone's
-export const THRESHOLD = 100; // deg of horizontal turn that selects the other face
-export const PULL_OUT = 0.4; // released past this much of the way out, the vinyl comes out
+const TAP = 6; // px: less travel than this is a tap
+const DEG_PER_PX = 0.5; // 180 deg = 360 px: about half the desktop stage, most of a phone's
+const THRESHOLD = 100; // deg of horizontal turn that selects the other face
+const PULL_OUT = 0.4; // released past this much of the way out, the vinyl comes out
 const COAST_DECAY = 6; // 1/s: velocity decays as exp(-COAST_DECAY t)
 const COAST_TIME = 0.35; // s
 const COAST_GAIN = (1 - Math.exp(-COAST_DECAY * COAST_TIME)) / COAST_DECAY; // displacement per unit velocity

@@ -6,7 +6,7 @@
 // record tilts. Activating a side brings it forward and enlarges it about 15 % around its anchor, the other
 // sides blur inside their own materials, and the riso channels kick apart and settle back.
 
-import { useEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { PlaneGeometry, Vector4 } from 'three/webgpu';
 import { uniform } from 'three/tsl';
@@ -71,6 +71,8 @@ const LIFT_PAD = 0.06; // uv, on top of the box's own 0.04
 const padBox = ([u0, v0, u1, v1], d) => [Math.max(0, u0 - d), Math.max(0, v0 - d), Math.min(1, u1 + d), Math.min(1, v1 + d)];
 
 function Layer({ name, active, spread, reduced }) {
+  const [visited, setVisited] = useState(active === name);
+  if (active === name && !visited) setVisited(true);
   const map = useKTX2Texture(URLS[name]);
   // Sides without a hero load their own art again here (the loader's cache returns the same texture).
   const plateMap = useKTX2Texture(PLATES[name] ?? URLS[name]);
@@ -159,16 +161,18 @@ function Layer({ name, active, spread, reduced }) {
       <group ref={pivot}>
         {/* Transparent layers draw in this order: the selected side goes over every other side. */}
         <mesh ref={side} position={[-ax, -ay, 0]} geometry={geo} material={mat} renderOrder={active === name ? 100 : order} />
-        {HEROES[name] && (
-          <Hero
-            name={name}
-            active={active}
-            reduced={reduced}
-            shift={U[name].shift}
-            rest={rest}
-            viewDistance={VIEW_DISTANCE}
-            frontZ={FRONT_Z}
-          />
+        {HEROES[name] && visited && (
+          <Suspense fallback={null}>
+            <Hero
+              name={name}
+              active={active}
+              reduced={reduced}
+              shift={U[name].shift}
+              rest={rest}
+              viewDistance={VIEW_DISTANCE}
+              frontZ={FRONT_Z}
+            />
+          </Suspense>
         )}
       </group>
     </>

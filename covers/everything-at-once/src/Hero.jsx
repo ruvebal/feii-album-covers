@@ -340,6 +340,13 @@ export default function Hero({ name, active, reduced, shift, rest, viewDistance,
         strum: STRUM,
       };
     return () => {
+      UP[name] = 0;
+      SHOW[name].value = 0;
+      BEAT[name] = 0;
+      if (DEBUG?.__eaoHeroRigs) {
+        delete DEBUG.__eaoHeroRigs[name];
+        if (!Object.keys(DEBUG.__eaoHeroRigs).length) delete DEBUG.__eaoHeroRigs;
+      }
       if (swing) swing.quaternion.copy(rig.current.swingRest); // the cached scene stays at rest
       for (const b of rig.current.bob) b.o.position.y = b.y;
       for (const f of rig.current.fold) f.o.quaternion.copy(f.rest);

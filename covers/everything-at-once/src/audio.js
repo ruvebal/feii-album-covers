@@ -37,9 +37,6 @@ const FADE_OUT = 0.8; // s, the record goes in: the music fades, then the contex
 const RISE = Float32Array.from({ length: 64 }, (_, i) => Math.sin((i / 63) * (Math.PI / 2)));
 const PATIENCE = 1500; // ms a resume may take before it counts as blocked (Chrome leaves it pending)
 
-/** True when this song has an excerpt on the page. */
-export const hasRecording = (song) => !!(URLS[`${FILE[song]}.opus`] || URLS[`${FILE[song]}.m4a`]);
-
 /**
  * @param {(status: { state: 'off' | 'loading' | 'playing' | 'blocked' | 'missing', song: string | null }) => void} onStatus
  */
@@ -54,6 +51,7 @@ export function createTransport(onStatus) {
   let master = null; // silent while the record is in, so unlocking early never sounds
   let resuming = false; // a resume is in flight: loading, not blocked (yet)
   let hush = 0;
+  let resumeTimer = 0;
   const missing = new Set();
   const live = new Map(); // source -> song, until it has really ended (fade tails included)
   const buffers = new Map();
@@ -102,13 +100,16 @@ export function createTransport(onStatus) {
     onStatus({ state: cur?.song === song ? 'playing' : 'loading', song });
   };
   const resume = () => {
+    const context = ctx;
+    clearTimeout(resumeTimer);
     resuming = true;
     const done = () => {
+      if (ctx !== context) return; // a late resume must not notify an unmounted route
       resuming = false;
       report();
     };
-    const timer = setTimeout(done, PATIENCE);
-    ctx.resume().then(
+    const timer = resumeTimer = setTimeout(done, PATIENCE);
+    context.resume().then(
       () => (clearTimeout(timer), done()),
       () => (clearTimeout(timer), done()),
     );
@@ -155,6 +156,10 @@ export function createTransport(onStatus) {
           master.connect(ctx.destination);
         }
         resume();
+        if (!on) {
+          clearTimeout(hush);
+          hush = setTimeout(() => ctx?.suspend(), FADE_OUT * 1500);
+        } else sync();
       } catch {
         report();
       }
@@ -201,6 +206,7 @@ export function createTransport(onStatus) {
     close() {
       seq++;
       clearTimeout(hush);
+      clearTimeout(resumeTimer);
       on = false;
       cur = null;
       live.clear();

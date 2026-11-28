@@ -17,7 +17,7 @@ import { createTransport } from './audio.js';
 import { AUDIO, UP } from './heroes.js';
 import { MEMBERS, TRACKS } from './members.js';
 import { TEXT } from './text.js';
-import Record from './Record.jsx';
+import Record, { Backdrop } from './Record.jsx';
 import { MIRROR } from './materials.js';
 import { FOV, FRONT_Z, VIEW_DISTANCE } from './Diorama.jsx';
 import { recordBox } from './frame.js';
@@ -32,8 +32,10 @@ const DPR = [1, 1.5];
 const dprFor = ({ factor }) => [1, 1 + Math.round(factor * 2) / 4];
 // Under 55 fps whatever the display's rate (drei's default band for 60 Hz screens is 40..60: a page at 45 fps never
 // stepped down); never up.
+// shortcut: OS-capped displays also step down; revisit when their cap can be measured independently of GPU throughput.
 const FPS_BOUNDS = () => [55, Infinity];
 const POSTER_URL = new URL('../public/poster.jpg', import.meta.url).href;
+const LOADER_LABEL_URL = new URL('../public/loader-label.webp', import.meta.url).href; // Karu's label, for the loader
 const OPENING_KEY = 'everything-at-once:opened'; // the opening (and its guidance) plays once per browser session
 // Archivo (OFL, public/fonts/OFL.txt), self-hosted subsets from scripts/fonts.py: the copy at normal width, and
 // the Expanded Black Italic of the member names (it echoes Karu's slanted lettering).
@@ -117,7 +119,7 @@ class SceneBoundary extends Component {
     this.props.onError?.(); // the route shows its poster again, even after the scene had loaded
   }
   render() {
-    return this.state.failed ? <p className="eao__failed">{this.props.message}</p> : this.props.children;
+    return this.state.failed ? null : this.props.children;
   }
 }
 
@@ -191,8 +193,10 @@ function CoverRoute() {
   // The opening: consumed as soon as it starts (also when reduced motion skips it), so leaving and
   // coming back in the same session never replays it.
   useEffect(() => {
-    if (sessionStorage.getItem(OPENING_KEY)) return;
-    sessionStorage.setItem(OPENING_KEY, '1');
+    try {
+      if (sessionStorage.getItem(OPENING_KEY)) return;
+      sessionStorage.setItem(OPENING_KEY, '1');
+    } catch { return; }
     if (reduced) return;
     spread.current = 0; // runs once the record has loaded (onReady), not behind the poster
     pendingOpening.current = true;
@@ -327,8 +331,14 @@ function CoverRoute() {
 
   // Escape dismisses inside the route only (the stage and panel), never as a global window handler.
   const onKeyDown = (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     settle();
     if (e.key === 'Escape') dismiss();
+    const n = Number(e.key);
+    if (n >= 1 && n <= MEMBERS.length && !e.repeat) {
+      e.preventDefault();
+      choose(MEMBERS[n - 1].id);
+    }
     if (e.target !== stage.current) return; // a focused control handles its own keys
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       e.preventDefault();
@@ -337,11 +347,6 @@ function CoverRoute() {
     if ((e.key === ' ' || e.key === 'Enter') && (out || face === 'front')) {
       e.preventDefault();
       vinylAction();
-    }
-    const n = Number(e.key);
-    if (n >= 1 && n <= MEMBERS.length && !e.repeat) {
-      e.preventDefault();
-      choose(MEMBERS[n - 1].id);
     }
   };
 
@@ -391,10 +396,25 @@ function CoverRoute() {
           onPointerCancel={(e) => endTurn(e, true)}
           onLostPointerCapture={(e) => endTurn(e, true)}
         >
-          {/* Karu's cover until the 3D record has loaded (and if it fails); its box is the record's rest box. */}
-          <img className="eao__poster" src={POSTER_URL} alt="" data-shown={!ready || failed} />
-          <SceneBoundary message={t.failed} onError={() => setFailed(true)}>
-            <Canvas
+          {/* Karu's cover if the 3D record fails; hidden, its box still marks the record's rest box. */}
+          <img className="eao__poster" src={POSTER_URL} alt="" data-shown={failed} />
+          {/* While the record loads: the vinyl alone, spinning where the record will be. */}
+          <div className="eao__loader" data-shown={!ready && !failed} role="status">
+            <div className="eao__disc" aria-hidden="true">
+              <img src={LOADER_LABEL_URL} alt="" />
+            </div>
+            <span className="eao__sr-only">{t.loading}</span>
+          </div>
+          {failed && <p className="eao__failed" role="status">{t.failed}</p>}
+          <SceneBoundary onError={() => setFailed(true)}>
+            {!failed && <Canvas
+              onCreated={({ gl }) => {
+                const onLost = gl.onDeviceLost;
+                gl.onDeviceLost = (info) => {
+                  onLost.call(gl, info);
+                  setFailed(true);
+                };
+              }}
               flat
               dpr={dpr}
               eventSource={stage}
@@ -407,6 +427,8 @@ function CoverRoute() {
                 return r;
               }}
             >
+              {/* outside Suspense: the page's background is there from the first frame, behind the loader */}
+              <Backdrop spread={spread} reduced={reduced} />
               <Suspense fallback={null}>
                 <Record
                   face={face}
@@ -422,9 +444,9 @@ function CoverRoute() {
                 <Ready onReady={onReady} />
               </Suspense>
               <Opening spreadRef={spread} runningRef={opening} guideRef={guide} />
-              <RouteBudgetProbe onSample={setBudget} fps={fps} debug={debug} />
+              <RouteBudgetProbe onSample={debug ? setBudget : undefined} fps={fps} debug={debug} />
               <PerformanceMonitor factor={1} step={0.5} bounds={FPS_BOUNDS} onChange={(m) => setDpr(dprFor(m))} />
-            </Canvas>
+            </Canvas>}
           </SceneBoundary>
           <svg className="eao__hit" aria-hidden="true">
             <polygon ref={bindHull} data-hit="sleeve" />
@@ -489,10 +511,10 @@ function CoverRoute() {
           ))}
         </ul>
         <div className="eao__controls">
-          <button type="button" aria-keyshortcuts="ArrowLeft ArrowRight" onClick={turnOver}>
+          <button type="button" onClick={turnOver}>
             {face === 'front' ? t.turnOver : t.showFront}
           </button>
-          <button type="button" aria-expanded={out} aria-keyshortcuts="Space Enter" onClick={() => vinylAction()}>
+          <button type="button" aria-expanded={out} onClick={() => vinylAction()}>
             {out ? t.putAway : t.slideOut}
           </button>
           {sound.state === 'blocked' && (
