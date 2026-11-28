@@ -34,6 +34,7 @@ ASSIGNMENT.md in this repo.
 ## Rights (D8)
 
 - [ ] Every picture is student-created, public domain, suitably open-licensed, or used with written permission; creator, source, right, and attribution are recorded in `docs/ktx2-note.md` (owning an album is not permission to republish its cover)
+- [ ] No remote images or videos inside the route (hotlinks); music and video come only from official players or embeds, or plain text links
 
 ## AI Review Log (Unit 6 — required, not optional)
 

@@ -28,10 +28,15 @@ globs:
 - Lowercase-kebab file names; no spaces
 
 ## Rights (D8)
-- A photo of a physical album you own, or a named licence in `docs/ktx2-note.md`. A private repository is not a licence
+- Allowed: artwork you created, public domain, an open licence that permits the public adaptation (CC0, CC BY, CC BY-SA), or written permission from the rights holder
+- Record creator, source, licence or permission, and attribution for every asset in `docs/ktx2-note.md`
+- Owning a physical album is not permission to republish its cover; Pages is public, and a repository is not a licence
+- A claimed legal exception needs instructor review before publication
+- A link is not a way round D8: official players/embeds (Apple Music, Spotify, official YouTube) and plain text links to official pages are fine; remote images or videos used inside a route, and links to copies uploaded by anyone but the rights holder, are not
 - `_studio` ships original or PD/CC art only
 
 ## Forbidden
 - Committing Photoshop PSDs or other authoring sources
 - Multi-megabyte PNGs as the final runtime texture
-- Scraped commercial cover art without a declared right
+- Commercial cover art, photos or models without one of the D8 rights above
+- Hotlinking images or GIFs from Pinterest, Tumblr, Reddit, store CDNs or image search

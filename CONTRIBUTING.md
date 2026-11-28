@@ -177,6 +177,7 @@ Review against the assignment bars and the PR template's checklist, not a genera
 - Record the creator, source, licence/permission, and required attribution in `docs/ktx2-note.md`.
 - Owning a physical album is not permission to republish its cover. Public Pages is not private study, and a repository is not a licence.
 - A claimed legal exception requires instructor review before publication. `_studio` and `_template` ship original or public-domain / CC art only.
+- **A link is not a way round D8.** Allowed: the official player or embed served by the rights holder or their platform (Apple Music, Spotify, the artist's or label's YouTube channel), and a plain text link to an official page. Not allowed: a remote image or video used as a texture or picture inside your route ("hotlinking"), and any link to a copy uploaded by someone other than the rights holder (Pinterest, Tumblr, Reddit, wallpaper sites, image-search results). A hotlinked picture is still someone else's work on show in your exhibit, it breaks when the host blocks cross-origin use or deletes the file, and pictures belong in `covers/<slug>/public/`.
 
 ## Editor rules
 
